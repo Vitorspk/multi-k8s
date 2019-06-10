@@ -1,2 +1,1 @@
-# multi-k8s
-# multi-k8s
+# Project Google Cloud Kubernetes.
