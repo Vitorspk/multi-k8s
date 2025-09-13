@@ -15,6 +15,13 @@ spec:
       containers:
         - name: worker
           image: vitorspk/multi-worker
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
           env:
             - name: REDIS_HOST
               value: redis-cluster-ip-service
