@@ -2,30 +2,62 @@
 
 set -e
 
-PROJECT_ID="vschiavo-home"
-REGION="southamerica-east1"
-ZONE="southamerica-east1-a"
+# Validate required environment variables
+if [[ -z "${GCP_PROJECT_ID}" ]]; then
+    echo "❌ Error: GCP_PROJECT_ID environment variable is required"
+    echo "Usage: export GCP_PROJECT_ID='your-project-id'"
+    exit 1
+fi
+
+if [[ -z "${GCP_REGION}" ]]; then
+    echo "⚠️  Warning: GCP_REGION not set, using default: southamerica-east1"
+    GCP_REGION="southamerica-east1"
+fi
+
+if [[ -z "${POSTGRES_PASSWORD}" ]]; then
+    echo "❌ Error: POSTGRES_PASSWORD environment variable is required"
+    echo "Usage: export POSTGRES_PASSWORD='your-secure-password'"
+    exit 1
+fi
+
+PROJECT_ID="${GCP_PROJECT_ID}"
+REGION="${GCP_REGION}"
+ZONE="${GCP_REGION}-a"
 CLUSTER_NAME="multi-k8s-cluster"
 
 echo "=== Deploy Completo para GKE ==="
 echo ""
 
 echo "1. Configurando projeto GCP..."
-gcloud config set project $PROJECT_ID
+if ! gcloud config set project $PROJECT_ID; then
+    echo "❌ Error: Failed to set GCP project. Check if project exists and you have access."
+    exit 1
+fi
 
 echo "2. Verificando se o cluster existe..."
 if ! gcloud container clusters describe $CLUSTER_NAME --zone=$ZONE &>/dev/null; then
-    echo "   Cluster não existe. Execute primeiro o Terraform:"
+    echo "❌ Error: Cluster '$CLUSTER_NAME' não existe na zona '$ZONE'"
+    echo "   Execute primeiro o Terraform:"
     echo "   cd terraform && terraform apply"
     exit 1
 fi
 
 echo "3. Obtendo credenciais do cluster..."
-gcloud container clusters get-credentials $CLUSTER_NAME --zone=$ZONE --project=$PROJECT_ID
+if ! gcloud container clusters get-credentials $CLUSTER_NAME --zone=$ZONE --project=$PROJECT_ID; then
+    echo "❌ Error: Failed to get cluster credentials. Check your access permissions."
+    exit 1
+fi
 
 echo "4. Criando secret para PostgreSQL (se não existir)..."
-kubectl get secret pgpassword &>/dev/null || \
-    kubectl create secret generic pgpassword --from-literal PGPASSWORD=postgres123
+if ! kubectl get secret pgpassword &>/dev/null; then
+    if ! kubectl create secret generic pgpassword --from-literal PGPASSWORD="${POSTGRES_PASSWORD}"; then
+        echo "❌ Error: Failed to create PostgreSQL secret"
+        exit 1
+    fi
+    echo "   ✅ PostgreSQL secret created"
+else
+    echo "   ✅ PostgreSQL secret already exists"
+fi
 
 echo "5. Verificando NGINX Ingress Controller..."
 kubectl get namespace ingress-nginx &>/dev/null || \

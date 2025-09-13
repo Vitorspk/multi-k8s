@@ -2,8 +2,20 @@
 
 set -e
 
-PROJECT_ID="vschiavo-home"
-REGION="southamerica-east1"
+# Validate required environment variables
+if [[ -z "${GCP_PROJECT_ID}" ]]; then
+    echo "❌ Error: GCP_PROJECT_ID environment variable is required"
+    echo "Usage: export GCP_PROJECT_ID='your-project-id'"
+    exit 1
+fi
+
+if [[ -z "${GCP_REGION}" ]]; then
+    echo "⚠️  Warning: GCP_REGION not set, using default: southamerica-east1"
+    GCP_REGION="southamerica-east1"
+fi
+
+PROJECT_ID="${GCP_PROJECT_ID}"
+REGION="${GCP_REGION}"
 SERVICE_ACCOUNT_NAME="multi-k8s-deployer"
 SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 KEY_FILE="service-account.json"
@@ -24,12 +36,12 @@ gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
 
 echo "3. Atribuindo permissões necessárias..."
 
+# Using principle of least privilege - removing overprivileged roles
 ROLES=(
-    "roles/container.admin"
-    "roles/storage.admin"
+    "roles/container.developer"
+    "roles/storage.objectAdmin"
     "roles/compute.viewer"
     "roles/iam.serviceAccountUser"
-    "roles/resourcemanager.projectIamAdmin"
 )
 
 for ROLE in "${ROLES[@]}"; do

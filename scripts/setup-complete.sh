@@ -2,10 +2,33 @@
 
 set -e
 
+# Validate required environment variables
+if [[ -z "${GCP_PROJECT_ID}" ]]; then
+    echo "❌ Error: GCP_PROJECT_ID environment variable is required"
+    echo ""
+    echo "Required environment variables:"
+    echo "  export GCP_PROJECT_ID='your-gcp-project-id'"
+    echo "  export GCP_REGION='your-region' (optional, defaults to southamerica-east1)"
+    echo "  export POSTGRES_PASSWORD='your-secure-password'"
+    echo ""
+    exit 1
+fi
+
+if [[ -z "${POSTGRES_PASSWORD}" ]]; then
+    echo "❌ Error: POSTGRES_PASSWORD environment variable is required"
+    echo "Please set a secure password: export POSTGRES_PASSWORD='your-secure-password'"
+    exit 1
+fi
+
+if [[ -z "${GCP_REGION}" ]]; then
+    echo "⚠️  Warning: GCP_REGION not set, using default: southamerica-east1"
+    GCP_REGION="southamerica-east1"
+fi
+
 echo "=== Setup Completo do Projeto Multi-K8s no GCP ==="
 echo ""
-echo "Projeto: vschiavo-home"
-echo "Região: southamerica-east1"
+echo "Projeto: ${GCP_PROJECT_ID}"
+echo "Região: ${GCP_REGION}"
 echo ""
 
 echo "📋 Passo 1: Configurar Service Account GCP"

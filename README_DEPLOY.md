@@ -11,20 +11,48 @@ Este projeto implementa uma aplicação multi-container com:
 
 ## 🚀 Setup Rápido
 
+### ⚠️ Pré-requisitos de Segurança
+
+**IMPORTANTE**: As credenciais não são mais hardcoded nos scripts. Configure as variáveis de ambiente primeiro:
+
+```bash
+# Opção 1: Use o script de configuração (recomendado)
+chmod +x scripts/*.sh
+./scripts/setup-env-vars.sh
+source .env.local
+
+# Opção 2: Configure manualmente
+export GCP_PROJECT_ID='your-gcp-project-id'
+export GCP_REGION='southamerica-east1'  # opcional
+export POSTGRES_PASSWORD='your-secure-password'
+export DOCKER_USERNAME='your-docker-username'
+export DOCKER_PASSWORD='your-docker-password'
+```
+
 ### Opção 1: Setup Automático Completo
 ```bash
-chmod +x scripts/*.sh
+# Primeiro configure as variáveis de ambiente
+./scripts/setup-env-vars.sh
+source .env.local
+
+# Então execute o setup completo
 ./scripts/setup-complete.sh
 ```
 
 ### Opção 2: Setup Manual Passo a Passo
 
-#### 1. Configurar Service Account GCP
+#### 1. Configurar Variáveis de Ambiente
+```bash
+./scripts/setup-env-vars.sh
+source .env.local
+```
+
+#### 2. Configurar Service Account GCP
 ```bash
 ./scripts/setup-gcp-service-account.sh
 ```
 
-#### 2. Criar Infraestrutura com Terraform
+#### 3. Criar Infraestrutura com Terraform
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
@@ -34,14 +62,32 @@ terraform apply
 cd ..
 ```
 
-#### 3. Build e Push das Imagens Docker
+#### 4. Build e Push das Imagens Docker
 ```bash
 ./scripts/docker-build-push.sh
 ```
 
-#### 4. Deploy no Kubernetes
+#### 5. Deploy no Kubernetes
 ```bash
 ./scripts/deploy-to-gke.sh
+```
+
+## 🔐 Melhorias de Segurança
+
+### ✅ Correções Implementadas
+- **Credenciais removidas**: Sem mais hardcoding de PROJECT_ID, senhas, etc.
+- **Permissões reduzidas**: Service account usa `container.developer` em vez de `projectIamAdmin`
+- **Senhas seguras**: Geração automática de senhas PostgreSQL
+- **Validação de entrada**: Todos os scripts validam variáveis de ambiente
+- **Melhor tratamento de erros**: Scripts param imediatamente em caso de falha
+
+### 🛠️ Scripts Utilitários
+```bash
+# Configurar todas as variáveis de ambiente interativamente
+./scripts/setup-env-vars.sh
+
+# Gerar senha segura para PostgreSQL
+./scripts/generate-postgres-password.sh
 ```
 
 ## 🔐 Configurar GitHub Actions
