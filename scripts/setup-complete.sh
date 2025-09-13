@@ -33,11 +33,19 @@ echo ""
 
 echo "📋 Passo 1: Configurar Service Account GCP"
 echo "----------------------------------------"
+if [[ ! -f "./scripts/setup-gcp-service-account.sh" ]]; then
+    echo "❌ Error: setup-gcp-service-account.sh not found"
+    exit 1
+fi
 ./scripts/setup-gcp-service-account.sh
 
 echo ""
 echo "📋 Passo 2: Criar Infraestrutura com Terraform"
 echo "-----------------------------------------------"
+if [[ ! -d "terraform" ]]; then
+    echo "❌ Error: terraform directory not found"
+    exit 1
+fi
 cd terraform
 
 if [ ! -f terraform.tfvars ]; then
@@ -55,18 +63,35 @@ echo "Inicializando Terraform..."
 terraform init
 
 echo "Aplicando infraestrutura..."
-terraform apply
+terraform plan
+echo ""
+read -p "Review the plan above. Continue with apply? (y/n): " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    terraform apply -auto-approve
+else
+    echo "Terraform apply cancelled"
+    exit 1
+fi
 
 cd ..
 
 echo ""
 echo "📋 Passo 3: Build e Push das Imagens Docker"
 echo "--------------------------------------------"
+if [[ ! -f "./scripts/docker-build-push.sh" ]]; then
+    echo "❌ Error: docker-build-push.sh not found"
+    exit 1
+fi
 ./scripts/docker-build-push.sh
 
 echo ""
 echo "📋 Passo 4: Deploy da Aplicação no Kubernetes"
 echo "----------------------------------------------"
+if [[ ! -f "./scripts/deploy-to-gke.sh" ]]; then
+    echo "❌ Error: deploy-to-gke.sh not found"
+    exit 1
+fi
 ./scripts/deploy-to-gke.sh
 
 echo ""

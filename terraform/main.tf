@@ -148,22 +148,3 @@ resource "google_project_iam_member" "kubernetes_roles" {
 resource "google_compute_global_address" "ingress_ip" {
   name = "${var.cluster_name}-ingress-ip"
 }
-
-resource "google_storage_bucket" "terraform_state" {
-  name          = "${var.project_id}-terraform-state"
-  location      = var.region
-  force_destroy = false
-  
-  versioning {
-    enabled = true
-  }
-  
-  lifecycle_rule {
-    condition {
-      age = 30
-    }
-    action {
-      type = "Delete"
-    }
-  }
-}

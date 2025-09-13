@@ -10,6 +10,13 @@ echo ""
 
 ENV_FILE=".env.local"
 
+# Check if .env.local exists and backup if needed
+if [[ -f "$ENV_FILE" ]]; then
+    echo "⚠️  $ENV_FILE already exists, creating backup..."
+    cp "$ENV_FILE" "${ENV_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    > "$ENV_FILE"  # Clear the file
+fi
+
 echo "Creating environment variables file: $ENV_FILE"
 echo ""
 
@@ -40,8 +47,8 @@ if [[ -z "${POSTGRES_PASSWORD}" ]]; then
     read -p "Choose option (1 or 2): " PASSWORD_OPTION
     
     if [[ "$PASSWORD_OPTION" == "1" ]]; then
-        POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
-        echo "Generated secure password: $POSTGRES_PASSWORD"
+        POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/")
+        echo "Generated secure password (saved to $ENV_FILE)"
         echo "export POSTGRES_PASSWORD='$POSTGRES_PASSWORD'" >> $ENV_FILE
     else
         read -sp "Enter PostgreSQL password: " POSTGRES_PASSWORD

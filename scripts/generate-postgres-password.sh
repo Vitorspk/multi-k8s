@@ -5,11 +5,16 @@ set -e
 echo "=== Generate Secure PostgreSQL Password ==="
 echo ""
 
-# Generate a secure random password
-PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+# Generate a secure random password (44 chars base64 without special chars)
+PASSWORD=$(openssl rand -base64 32 | tr -d "=+/")
 
 echo "Generated secure PostgreSQL password:"
-echo "POSTGRES_PASSWORD='$PASSWORD'"
+echo "" 
+echo "Export command:"
+echo "export POSTGRES_PASSWORD='$PASSWORD'"
+echo ""
+echo "Password value (for manual copy):"
+echo "$PASSWORD"
 echo ""
 echo "To use this password, run:"
 echo "export POSTGRES_PASSWORD='$PASSWORD'"

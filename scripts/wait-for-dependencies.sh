@@ -33,9 +33,9 @@ check_service_endpoints() {
     local service=$1
     local namespace=$2
     
-    endpoints=$(kubectl get endpoints $service -n $namespace -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)
-    if [[ -n "$endpoints" ]]; then
-        echo "  Service $service has endpoints: $endpoints"
+    endpoints=$(kubectl get endpoints "$service" -n "$namespace" -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)
+    if [[ -n "${endpoints}" ]]; then
+        echo "  Service $service has endpoints: ${endpoints}"
         return 0
     else
         echo "  Service $service has no endpoints yet"

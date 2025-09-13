@@ -51,7 +51,10 @@ done
 
 # Check if PostgreSQL has proper environment variables
 echo "Checking PostgreSQL configuration..."
-if grep -q "POSTGRES_PASSWORD" k8s/postgres-config.yaml && \
+if [[ ! -f "k8s/postgres-config.yaml" ]]; then
+    echo -e "${RED}✗${NC} k8s/postgres-config.yaml not found"
+    ERRORS_FOUND=1
+elif grep -q "POSTGRES_PASSWORD" k8s/postgres-config.yaml && \
    grep -q "POSTGRES_DB" k8s/postgres-config.yaml && \
    grep -q "POSTGRES_USER" k8s/postgres-config.yaml; then
     echo -e "${GREEN}✓${NC} PostgreSQL environment variables properly configured"
