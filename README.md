@@ -33,6 +33,24 @@ Internet → Load Balancer → Ingress Controller
 - Docker Hub account
 - GitHub repository (para CI/CD)
 
+### ⚠️ IMPORTANTE: Criar Infraestrutura Primeiro!
+
+O cluster GKE deve existir antes do deploy. Escolha uma opção:
+
+#### Opção A: Via GitHub Actions (Recomendado)
+1. Configure os secrets no GitHub (veja seção Configuração GitHub Actions)
+2. Vá em **Actions** → **Setup GKE Infrastructure**
+3. Clique em **Run workflow** → Selecione **apply** → **Run**
+4. Aguarde a criação do cluster (~10-15 minutos)
+
+#### Opção B: Via Terraform Local
+```bash
+cd terraform
+terraform init
+terraform apply -auto-approve
+cd ..
+```
+
 ### Opção 1: Setup Automático Completo
 
 ```bash
@@ -331,6 +349,17 @@ kubectl logs -f deployment/server-deployment -n multi-k8s
 - API Values: `http://<EXTERNAL_IP>/api/values/current`
 
 ## 🆘 Troubleshooting
+
+### Erro: Cluster não existe (404 Not Found)
+
+```
+ERROR: (gcloud.container.clusters.get-credentials) ResponseError: code=404, message=Not found
+```
+
+**Solução**: O cluster GKE não foi criado ainda. Execute primeiro:
+
+1. **Via GitHub Actions**: Actions → Setup GKE Infrastructure → Run workflow → apply
+2. **Via Terminal**: `cd terraform && terraform apply`
 
 ### Pods não iniciam
 
