@@ -1,0 +1,16 @@
+project_id = "vschiavo-home"
+region     = "southamerica-east1"
+zone       = "southamerica-east1-a"
+
+cluster_name = "multi-k8s"
+environment  = "prod"
+
+node_count     = 1
+min_node_count = 1
+max_node_count = 3
+
+machine_type = "e2-small"
+preemptible  = true
+
+docker_username   = "your-docker-username"
+postgres_password = "your-secure-password"

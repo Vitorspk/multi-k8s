@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Build test image
+      run: |
+        docker build -t test-client -f ./client/Dockerfile.dev ./client
+
+    - name: Run client tests
+      run: |
+        docker run -e CI=true test-client npm test -- --coverage
+
+    - name: Test server build
+      run: |
+        docker build -f ./server/Dockerfile ./server
+
+    - name: Test worker build
+      run: |
+        docker build -f ./worker/Dockerfile ./worker

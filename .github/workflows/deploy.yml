@@ -1,0 +1,81 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'multi-k8s-cluster' }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE || 'southamerica-east1-a' }}
+  DEPLOYMENT_NAME: ${{ secrets.DEPLOYMENT_NAME || 'multi-k8s' }}
+
+jobs:
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Configure Docker to use gcloud as credential helper
+      run: |
+        gcloud auth configure-docker
+
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project $PROJECT_ID
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Get SHA
+      id: sha
+      run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Build Docker images
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-client:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }} -f ./client/Dockerfile ./client
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-server:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-server:${{ steps.sha.outputs.sha }} -f ./server/Dockerfile ./server
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-worker:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }} -f ./worker/Dockerfile ./worker
+
+    - name: Push Docker images
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-client:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-server:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-server:${{ steps.sha.outputs.sha }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-worker:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }}
+
+    - name: Create PostgreSQL Secret
+      run: |
+        kubectl get secret pgpassword &>/dev/null || \
+        kubectl create secret generic pgpassword \
+          --from-literal=PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+    - name: Deploy to GKE
+      run: |
+        kubectl apply -f k8s/
+        kubectl set image deployments/client-deployment client=${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }}
+        kubectl set image deployments/server-deployment server=${{ secrets.DOCKER_USERNAME }}/multi-server:${{ steps.sha.outputs.sha }}
+        kubectl set image deployments/worker-deployment worker=${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }}
+        kubectl rollout status deployment/client-deployment
+        kubectl rollout status deployment/server-deployment
+        kubectl rollout status deployment/worker-deployment
