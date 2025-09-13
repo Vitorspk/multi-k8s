@@ -26,10 +26,10 @@ echo "Região: $REGION"
 echo ""
 
 echo "1. Configurando projeto..."
-gcloud config set project $PROJECT_ID
+gcloud config set project "$PROJECT_ID"
 
 echo "2. Criando Service Account..."
-gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
+gcloud iam service-accounts create "$SERVICE_ACCOUNT_NAME" \
     --display-name="Multi-K8s Deployer" \
     --description="Service account for deploying multi-k8s application" \
     || echo "Service Account já existe"
@@ -46,18 +46,21 @@ ROLES=(
 
 for ROLE in "${ROLES[@]}"; do
     echo "   - Atribuindo role: $ROLE"
-    gcloud projects add-iam-policy-binding $PROJECT_ID \
-        --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
+    gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
         --role="$ROLE" \
         --quiet
 done
 
 echo "4. Gerando chave JSON..."
-gcloud iam service-accounts keys create $KEY_FILE \
-    --iam-account=$SERVICE_ACCOUNT_EMAIL
+gcloud iam service-accounts keys create "$KEY_FILE" \
+    --iam-account="$SERVICE_ACCOUNT_EMAIL"
 
 echo "5. Validando configuração..."
-gcloud auth activate-service-account --key-file=$KEY_FILE
+if ! gcloud auth activate-service-account --key-file="$KEY_FILE"; then
+    echo "❌ Error: Failed to activate service account"
+    exit 1
+fi
 
 echo ""
 echo "✅ Service Account configurada com sucesso!"
