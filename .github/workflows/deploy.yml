@@ -7,10 +7,10 @@ on:
       - main
 
 env:
-  PROJECT_ID: vschiavo-home
-  GKE_CLUSTER: multi-k8s-cluster
-  GKE_ZONE: southamerica-east1-a
-  DEPLOYMENT_NAME: multi-k8s
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'multi-k8s-cluster' }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE || 'southamerica-east1-a' }}
+  DEPLOYMENT_NAME: ${{ secrets.DEPLOYMENT_NAME || 'multi-k8s' }}
 
 jobs:
   setup-build-publish-deploy:
@@ -63,6 +63,12 @@ jobs:
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-server:${{ steps.sha.outputs.sha }}
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-worker:latest
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }}
+
+    - name: Create PostgreSQL Secret
+      run: |
+        kubectl get secret pgpassword &>/dev/null || \
+        kubectl create secret generic pgpassword \
+          --from-literal=PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
 
     - name: Deploy to GKE
       run: |
