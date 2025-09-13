@@ -1,0 +1,101 @@
+name: Setup GKE Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_docker_username: ${{ secrets.DOCKER_USERNAME }}
+  TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+
+jobs:
+  terraform:
+    name: Terraform Infrastructure Management
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: terraform
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+
+    - name: Terraform Init
+      run: |
+        terraform init
+
+    - name: Terraform Validate
+      run: |
+        terraform validate
+
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan'
+      run: |
+        terraform plan \
+          -var="project_id=${{ env.TF_VAR_project_id }}" \
+          -var="docker_username=${{ env.TF_VAR_docker_username }}" \
+          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      run: |
+        terraform apply -auto-approve \
+          -var="project_id=${{ env.TF_VAR_project_id }}" \
+          -var="docker_username=${{ env.TF_VAR_docker_username }}" \
+          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+        
+        echo "✅ Infrastructure created successfully!"
+        echo ""
+        echo "📊 Resources created:"
+        terraform output
+        echo ""
+        echo "Next steps:"
+        echo "1. The GKE cluster is now ready"
+        echo "2. Push to main/master branch to trigger deployment"
+        echo "3. Or run deployment workflow manually"
+
+    - name: Terraform Destroy
+      if: github.event.inputs.action == 'destroy'
+      run: |
+        echo "⚠️ WARNING: This will destroy all infrastructure!"
+        terraform destroy -auto-approve \
+          -var="project_id=${{ env.TF_VAR_project_id }}" \
+          -var="docker_username=${{ env.TF_VAR_docker_username }}" \
+          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+        
+        echo "🗑️ Infrastructure destroyed successfully!"
+
+    - name: Save Terraform Outputs
+      if: github.event.inputs.action == 'apply'
+      run: |
+        echo "## Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        terraform output >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

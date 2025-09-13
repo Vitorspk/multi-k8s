@@ -35,11 +35,26 @@ jobs:
       run: |
         gcloud auth configure-docker
 
+    - name: Check if GKE cluster exists
+      id: check-cluster
+      run: |
+        if gcloud container clusters describe $GKE_CLUSTER --zone=$GKE_ZONE --project=$PROJECT_ID &>/dev/null; then
+          echo "cluster_exists=true" >> $GITHUB_OUTPUT
+          echo "✅ Cluster $GKE_CLUSTER exists in zone $GKE_ZONE"
+        else
+          echo "cluster_exists=false" >> $GITHUB_OUTPUT
+          echo "❌ Cluster $GKE_CLUSTER does not exist in zone $GKE_ZONE"
+          echo "⚠️  Please run Terraform first to create the infrastructure:"
+          echo "   cd terraform && terraform init && terraform apply"
+        fi
+
     - name: Get GKE credentials
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
         gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project $PROJECT_ID
 
     - name: Login to Docker Hub
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
@@ -50,12 +65,14 @@ jobs:
       run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
     - name: Build Docker images
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-client:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }} -f ./client/Dockerfile ./client
         docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-server:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-server:${{ steps.sha.outputs.sha }} -f ./server/Dockerfile ./server
         docker build -t ${{ secrets.DOCKER_USERNAME }}/multi-worker:latest -t ${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }} -f ./worker/Dockerfile ./worker
 
     - name: Push Docker images
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-client:latest
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }}
@@ -65,12 +82,14 @@ jobs:
         docker push ${{ secrets.DOCKER_USERNAME }}/multi-worker:${{ steps.sha.outputs.sha }}
 
     - name: Create PostgreSQL Secret
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
         kubectl get secret pgpassword &>/dev/null || \
         kubectl create secret generic pgpassword \
           --from-literal=PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
 
     - name: Deploy to GKE
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
         kubectl apply -f k8s/
         kubectl set image deployments/client-deployment client=${{ secrets.DOCKER_USERNAME }}/multi-client:${{ steps.sha.outputs.sha }}
