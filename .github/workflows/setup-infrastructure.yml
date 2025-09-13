@@ -47,6 +47,17 @@ jobs:
       with:
         version: 'latest'
 
+    - name: Create Terraform Backend Bucket
+      run: |
+        BUCKET_NAME="vschiavo-home-terraform-state"
+        if ! gsutil ls -b gs://$BUCKET_NAME &> /dev/null; then
+          echo "Creating Terraform state bucket..."
+          gsutil mb -p ${{ env.PROJECT_ID }} -l southamerica-east1 gs://$BUCKET_NAME
+          gsutil versioning set on gs://$BUCKET_NAME
+        else
+          echo "Terraform state bucket already exists"
+        fi
+
     - name: Terraform Init
       run: |
         terraform init
