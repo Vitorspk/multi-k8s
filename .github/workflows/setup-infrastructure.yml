@@ -150,10 +150,26 @@ jobs:
       if: github.event.inputs.action == 'destroy'
       run: |
         echo "⚠️ WARNING: This will destroy all infrastructure!"
+
+        # First, try to clean up Kubernetes resources manually
+        echo "🧹 Cleaning up Kubernetes resources..."
+        cd ..
+        ./scripts/cleanup-k8s-resources.sh || true
+        cd terraform
+
+        # Now run terraform destroy with increased timeout
         terraform destroy -auto-approve \
-          -var="project_id=${{ env.TF_VAR_project_id }}"
-        
-        echo "🗑️ Infrastructure destroyed successfully!"
+          -var="project_id=${{ env.TF_VAR_project_id }}" \
+          -parallelism=1 || {
+            echo "⚠️ Some resources may have failed to destroy. Retrying..."
+            # Try again focusing on remaining resources
+            terraform destroy -auto-approve \
+              -var="project_id=${{ env.TF_VAR_project_id }}" \
+              -target=google_container_cluster.primary \
+              -target=google_compute_network.vpc || true
+          }
+
+        echo "🗑️ Infrastructure destruction completed!"
 
     - name: Save Terraform Outputs
       if: github.event.inputs.action == 'apply'

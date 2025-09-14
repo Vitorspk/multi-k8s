@@ -233,7 +233,8 @@ make secrets-setup     # Configurar secrets
 make secrets-sync      # Sincronizar secrets
 make secrets-validate  # Validar secrets
 make monitor-pods      # Monitorar pods
-make clean             # Limpar recursos
+make clean-k8s         # Limpar recursos do Kubernetes
+make clean             # Limpar todos os recursos
 ```
 
 ### Kubernetes Commands
@@ -325,6 +326,21 @@ gcloud projects get-iam-policy PROJECT_ID
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:SA_EMAIL" \
     --role="roles/secretmanager.secretAccessor"
+```
+
+#### Terraform destroy travando
+
+Se o `terraform destroy` travar no namespace `ingress-nginx`:
+
+```bash
+# Executar limpeza manual
+make clean-k8s
+
+# Ou executar o script diretamente
+./scripts/cleanup-k8s-resources.sh
+
+# Depois tentar destroy novamente
+cd terraform && terraform destroy -auto-approve
 ```
 
 ### Logs e Monitoramento
