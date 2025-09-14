@@ -33,17 +33,33 @@ Internet → Load Balancer → Ingress Controller
 - Docker Hub account
 - GitHub repository (para CI/CD)
 
-### ⚠️ IMPORTANTE: Criar Infraestrutura Primeiro!
+## 📋 Deployment Flow
 
-O cluster GKE deve existir antes do deploy. Escolha uma opção:
+### Initial Setup (Run Once)
 
-#### Opção A: Via GitHub Actions (Recomendado)
-1. Configure os secrets no GitHub (veja seção Configuração GitHub Actions)
-2. Vá em **Actions** → **Setup GKE Infrastructure**
-3. Clique em **Run workflow** → Selecione **apply** → **Run**
-4. Aguarde a criação do cluster (~10-15 minutos)
+#### 1. Configure GCP Service Account
+```bash
+# Set environment variables
+export GCP_PROJECT_ID="your-project-id"
+export GCP_REGION="southamerica-east1"
 
-#### Opção B: Via Terraform Local
+# Run setup script (creates service account and optionally Terraform backend)
+./scripts/setup-gcp-permissions.sh
+
+# Copy the service account key to GitHub Secrets
+cat service-account.json | pbcopy
+# Add to GitHub: Settings > Secrets > Actions > GCP_SA_KEY
+```
+
+#### 2. Create Infrastructure
+
+**Option A: Via GitHub Actions (Recommended)**
+1. Configure GitHub Secrets (see section below)
+2. Go to **Actions** → **Setup GKE Infrastructure**
+3. Click **Run workflow** → Select **apply** → **Run**
+4. Wait for cluster creation (~10-15 minutes)
+
+**Option B: Via Terraform Local**
 ```bash
 cd terraform
 terraform init
@@ -51,50 +67,37 @@ terraform apply -auto-approve
 cd ..
 ```
 
-### Opção 1: Setup Automático Completo
+### Manual Setup (Alternative)
+
+#### 1️⃣ Configure Environment Variables
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/Vitorspk/multi-k8s.git
-cd multi-k8s
-
-# 2. Configure variáveis de ambiente
-chmod +x scripts/*.sh
+# Interactive setup (recommended)
 ./scripts/setup-env-vars.sh
 source .env.local
 
-# 3. Execute setup completo
-./scripts/setup-complete.sh
-```
-
-### Opção 2: Setup Manual Passo a Passo
-
-#### 1️⃣ Configurar Variáveis de Ambiente
-
-```bash
+# Or manually export
 export GCP_PROJECT_ID='your-gcp-project-id'
 export GCP_REGION='southamerica-east1'
 export POSTGRES_PASSWORD='your-secure-password'
 export DOCKER_USERNAME='your-docker-username'
 export DOCKER_PASSWORD='your-docker-password'
-
-# Ou use o script interativo
-./scripts/setup-env-vars.sh
-source .env.local
 ```
 
-#### 2️⃣ Configurar Service Account GCP
+#### 2️⃣ Setup GCP Permissions
 
 ```bash
-./scripts/setup-gcp-service-account.sh
+# Creates service account with proper permissions
+# Optionally creates Terraform backend bucket
+./scripts/setup-gcp-permissions.sh
 ```
 
-#### 3️⃣ Criar Infraestrutura com Terraform
+#### 3️⃣ Create Infrastructure
 
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edite terraform.tfvars com suas configurações
+# Edit terraform.tfvars with your settings
 
 terraform init
 terraform plan
@@ -102,16 +105,17 @@ terraform apply
 cd ..
 ```
 
-#### 4️⃣ Build e Push das Imagens Docker
+#### 4️⃣ Deploy Application
 
 ```bash
+# Build and push Docker images (optional, CI/CD does this)
 ./scripts/docker-build-push.sh
-```
 
-#### 5️⃣ Deploy no Kubernetes
-
-```bash
+# Deploy to GKE
 ./scripts/deploy-to-gke.sh
+
+# Verify deployment
+./scripts/wait-for-dependencies.sh
 ```
 
 ## 🔄 Ordem de Deploy (Importante!)
@@ -219,13 +223,12 @@ multi-k8s/
 │   ├── variables.tf      # Input variables
 │   └── outputs.tf        # Output values
 └── scripts/               # Automation Scripts
-    ├── setup-complete.sh          # Setup completo
-    ├── setup-env-vars.sh          # Configurar variáveis
-    ├── setup-gcp-service-account.sh  # Criar SA
-    ├── docker-build-push.sh      # Build images
-    ├── deploy-to-gke.sh          # Deploy K8s
-    ├── wait-for-dependencies.sh  # Verificar serviços
-    └── validate-k8s-configs.sh   # Validar configs
+    ├── setup-env-vars.sh          # Configure environment variables
+    ├── setup-gcp-permissions.sh   # Setup GCP service account & bucket
+    ├── docker-build-push.sh       # Build and push Docker images
+    ├── deploy-to-gke.sh           # Deploy to Kubernetes
+    ├── wait-for-dependencies.sh   # Verify services are ready
+    └── validate-k8s-configs.sh    # Validate K8s configurations
 ```
 
 ## 🛠️ Comandos Úteis
@@ -348,15 +351,38 @@ kubectl logs -f deployment/server-deployment -n multi-k8s
 - API Server: `http://<EXTERNAL_IP>/api/`
 - API Values: `http://<EXTERNAL_IP>/api/values/current`
 
+## 📚 Scripts Overview
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `validate-project.sh` | **Complete project validation** - checks all dependencies and configs | Run first to verify setup |
+| `setup-gcp-permissions.sh` | Creates service account with proper permissions & optionally Terraform backend | Initial setup only |
+| `setup-env-vars.sh` | Interactive environment variable configuration | Local development setup |
+| `deploy-to-gke.sh` | Manual deployment to GKE cluster | Local testing/debugging |
+| `docker-build-push.sh` | Build and push Docker images | Local testing (CI/CD handles this automatically) |
+| `validate-k8s-configs.sh` | Validate Kubernetes configurations | Before deployment |
+| `wait-for-dependencies.sh` | Wait for all services to be ready | After deployment |
+
 ## 🆘 Troubleshooting
 
-### Erro: Cluster não existe (404 Not Found)
+### Permission Denied Error (storage.buckets.create)
+
+```
+AccessDeniedException: 403 multi-k8s-deployer@***.iam.gserviceaccount.com does not have storage.buckets.create access
+```
+
+**Solution**:
+1. Run `./scripts/setup-gcp-permissions.sh` locally
+2. Update GitHub Secret with new service account key: `cat service-account.json | pbcopy`
+3. Re-run the workflow
+
+### Cluster Not Found (404 Not Found)
 
 ```
 ERROR: (gcloud.container.clusters.get-credentials) ResponseError: code=404, message=Not found
 ```
 
-**Solução**: O cluster GKE não foi criado ainda. Execute primeiro:
+**Solution**: The GKE cluster hasn't been created yet. Create it first:
 
 1. **Via GitHub Actions**: Actions → Setup GKE Infrastructure → Run workflow → apply
 2. **Via Terminal**: `cd terraform && terraform apply`

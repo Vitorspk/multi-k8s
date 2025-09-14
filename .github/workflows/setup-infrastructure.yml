@@ -49,15 +49,54 @@ jobs:
 
     - name: Create Terraform Backend Bucket
       run: |
-        BUCKET_NAME="vschiavo-home-terraform-state"
+        BUCKET_NAME="${{ env.PROJECT_ID }}-terraform-state"
+        REGION="southamerica-east1"
+        
+        echo "Checking if bucket exists..."
         if ! gsutil ls -b gs://$BUCKET_NAME &> /dev/null; then
           echo "Creating Terraform state bucket..."
-          gsutil mb -p ${{ env.PROJECT_ID }} -l southamerica-east1 gs://$BUCKET_NAME
+          if ! gsutil mb -p ${{ env.PROJECT_ID }} -l $REGION gs://$BUCKET_NAME; then
+            echo "Failed to create bucket. Service account may need storage.admin role."
+            echo "Run locally: ./scripts/setup-gcp-permissions.sh"
+            exit 1
+          fi
           gsutil versioning set on gs://$BUCKET_NAME
+          
+          # Set lifecycle rule to delete old versions after 30 days
+          cat > /tmp/lifecycle.json <<EOF
+        {
+          "lifecycle": {
+            "rule": [
+              {
+                "action": {"type": "Delete"},
+                "condition": {
+                  "age": 30,
+                  "isLive": false
+                }
+              }
+            ]
+          }
+        }
+        EOF
+          gsutil lifecycle set /tmp/lifecycle.json gs://$BUCKET_NAME
+          rm /tmp/lifecycle.json
         else
           echo "Terraform state bucket already exists"
         fi
 
+    - name: Configure Terraform Backend
+      run: |
+        BUCKET_NAME="${{ env.PROJECT_ID }}-terraform-state"
+        cat > backend.tf <<EOF
+        terraform {
+          backend "gcs" {
+            bucket = "$BUCKET_NAME"
+            prefix = "multi-k8s/state"
+          }
+        }
+        EOF
+        echo "Backend configured for bucket: $BUCKET_NAME"
+    
     - name: Terraform Init
       run: |
         terraform init

@@ -1,0 +1,6 @@
+terraform {
+  backend "gcs" {
+    bucket = "BUCKET_NAME_PLACEHOLDER"
+    prefix = "multi-k8s/state"
+  }
+}
