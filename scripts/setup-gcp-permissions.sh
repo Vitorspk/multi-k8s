@@ -40,6 +40,7 @@ echo ""
 echo "2. Granting IAM roles..."
 ROLES=(
     "roles/storage.admin"
+    "roles/artifactregistry.writer"
     "roles/container.admin"
     "roles/compute.admin"
     "roles/iam.serviceAccountUser"
