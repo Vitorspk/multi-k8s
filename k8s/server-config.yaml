@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: vitorspk/multi-server
+          image: gcr.io/vschiavo-home/multi-server:latest
           ports:
             - containerPort: 5000
           resources:

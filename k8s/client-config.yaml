@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: client
-          image: vitorspk/multi-client
+          image: gcr.io/vschiavo-home/multi-client:latest
           ports:
             - containerPort: 3000
           resources:
