@@ -42,21 +42,39 @@ spec:
             successThreshold: 1
           env:
             - name: REDIS_HOST
-              value: redis-cluster-ip-service
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secrets
+                  key: REDIS_HOST
             - name: REDIS_PORT
-              value: '6379'
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secrets
+                  key: REDIS_PORT
             - name: PGUSER
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: PGUSER
             - name: PGHOST
-              value: postgres-cluster-ip-service
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: PGHOST
             - name: PGPORT
-              value: '5432'
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: PGPORT
             - name: PGDATABASE
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: PGDATABASE
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: pgpassword
+                  name: database-secrets
                   key: PGPASSWORD
 
 ---

@@ -14,19 +14,9 @@ resource "kubernetes_namespace" "nginx_ingress" {
   }
 }
 
-resource "kubernetes_secret" "pgpassword" {
-  depends_on = [null_resource.configure_kubectl]
-
-  metadata {
-    name = "pgpassword"
-  }
-
-  data = {
-    PGPASSWORD = var.postgres_password
-  }
-
-  type = "Opaque"
-}
+# PostgreSQL secret removed - now managed via GCP Secret Manager
+# The secrets are automatically synced from GCP Secret Manager during deployment
+# See scripts/manage-secrets.sh and scripts/sync-secrets.py
 
 resource "null_resource" "install_nginx_ingress" {
   depends_on = [

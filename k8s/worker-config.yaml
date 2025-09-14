@@ -24,6 +24,12 @@ spec:
               cpu: "200m"
           env:
             - name: REDIS_HOST
-              value: redis-cluster-ip-service
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secrets
+                  key: REDIS_HOST
             - name: REDIS_PORT
-              value: '6379'
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secrets
+                  key: REDIS_PORT

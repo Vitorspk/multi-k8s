@@ -4,6 +4,10 @@
 
 set -e
 
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+
 NAMESPACE=${NAMESPACE:-default}
 TIMEOUT=${TIMEOUT:-300}
 
@@ -12,21 +16,7 @@ echo "Namespace: $NAMESPACE"
 echo "Timeout: ${TIMEOUT}s"
 echo ""
 
-# Function to wait for a deployment
-wait_for_deployment() {
-    local deployment=$1
-    local namespace=$2
-    local timeout=$3
-    
-    echo -n "Waiting for $deployment..."
-    if kubectl wait --for=condition=available --timeout=${timeout}s deployment/$deployment -n $namespace 2>/dev/null; then
-        echo " ✓ Ready"
-        return 0
-    else
-        echo " ✗ Failed or timed out"
-        return 1
-    fi
-}
+# Using wait_for_deployment function from common.sh
 
 # Function to check if a service has endpoints
 check_service_endpoints() {
