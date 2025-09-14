@@ -45,6 +45,8 @@ ROLES=(
     "roles/compute.admin"
     "roles/iam.serviceAccountUser"
     "roles/resourcemanager.projectIamAdmin"
+    "roles/serviceusage.serviceUsageAdmin"
+    "roles/secretmanager.admin"
 )
 
 for role in "${ROLES[@]}"; do

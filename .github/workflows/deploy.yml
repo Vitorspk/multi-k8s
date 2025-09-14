@@ -82,21 +82,66 @@ jobs:
     - name: Enable Secret Manager API
       if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
-        gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID
+        # Check if API is already enabled
+        if gcloud services list --enabled --filter="config.name:secretmanager.googleapis.com" --format="value(config.name)" --project=$PROJECT_ID | grep -q secretmanager; then
+          echo "✅ Secret Manager API is already enabled"
+        else
+          echo "🚀 Enabling Secret Manager API..."
+          gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID || {
+            echo "⚠️ Failed to enable Secret Manager API. It may require additional permissions."
+            echo "You can enable it manually via Console or with appropriate permissions."
+          }
+        fi
 
     - name: Sync Secrets from Secret Manager
       if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
-        # Install Python dependencies if needed
-        python3 -m pip install --upgrade pip
+        # Check if Secret Manager is accessible
+        if gcloud secrets list --project=$PROJECT_ID --limit=1 &>/dev/null; then
+          echo "✅ Secret Manager is accessible, syncing secrets..."
 
-        # Run secret synchronization
-        python3 scripts/sync-secrets.py --project-id=$PROJECT_ID
+          # Install Python dependencies if needed
+          python3 -m pip install --upgrade pip
+
+          # Run secret synchronization
+          python3 scripts/sync-secrets.py --project-id=$PROJECT_ID || {
+            echo "⚠️ Secret sync failed, falling back to manual creation"
+            # Fallback: Create secrets manually with default values
+            kubectl create secret generic database-secrets \
+              --from-literal=PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+              --from-literal=PGUSER="postgres" \
+              --from-literal=PGHOST="postgres-cluster-ip-service" \
+              --from-literal=PGPORT="5432" \
+              --from-literal=PGDATABASE="postgres" \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            kubectl create secret generic redis-secrets \
+              --from-literal=REDIS_HOST="redis-cluster-ip-service" \
+              --from-literal=REDIS_PORT="6379" \
+              --dry-run=client -o yaml | kubectl apply -f -
+          }
+        else
+          echo "⚠️ Secret Manager not accessible, creating secrets manually..."
+
+          # Create secrets manually with environment values
+          kubectl create secret generic database-secrets \
+            --from-literal=PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+            --from-literal=PGUSER="postgres" \
+            --from-literal=PGHOST="postgres-cluster-ip-service" \
+            --from-literal=PGPORT="5432" \
+            --from-literal=PGDATABASE="postgres" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl create secret generic redis-secrets \
+            --from-literal=REDIS_HOST="redis-cluster-ip-service" \
+            --from-literal=REDIS_PORT="6379" \
+            --dry-run=client -o yaml | kubectl apply -f -
+        fi
 
         # Create legacy pgpassword secret for backward compatibility
         kubectl get secret pgpassword &>/dev/null || \
         kubectl create secret generic pgpassword \
-          --from-literal=PGPASSWORD=$(gcloud secrets versions access latest --secret=postgres-password --project=$PROJECT_ID)
+          --from-literal=PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
 
     - name: Deploy to GKE
       if: steps.check-cluster.outputs.cluster_exists == 'true'
