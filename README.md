@@ -63,6 +63,7 @@ Este projeto demonstra uma aplicação completa em produção usando Docker, Kub
 2. **Configure os Secrets no GitHub:**
    - `GCP_PROJECT_ID`: Seu ID do projeto GCP
    - `GCP_SA_KEY`: Service Account JSON (será criado no setup)
+   - `POSTGRES_PASSWORD`: Senha para o PostgreSQL
 
 3. **Execute o Setup de Infraestrutura:**
    - Actions → Setup GKE Infrastructure → Run workflow → Apply
@@ -406,6 +407,24 @@ multi-k8s/
 - ✅ **HTTPS** via Ingress
 - ✅ **Versionamento** de secrets
 - ✅ **Auditoria** completa via GCP
+
+### Permissões IAM Necessárias
+
+O Service Account usado pelo GitHub Actions precisa das seguintes roles:
+
+- `roles/storage.admin` - Gerenciar buckets e objetos no Cloud Storage
+- `roles/artifactregistry.writer` - Push de imagens Docker
+- `roles/container.admin` - Gerenciar clusters GKE
+- `roles/compute.admin` - Gerenciar recursos de computação
+- `roles/iam.serviceAccountUser` - Usar service accounts
+- `roles/resourcemanager.projectIamAdmin` - Gerenciar IAM do projeto
+- `roles/serviceusage.serviceUsageAdmin` - Habilitar APIs do GCP
+- `roles/secretmanager.admin` - Gerenciar secrets no Secret Manager
+
+Para configurar essas permissões, execute:
+```bash
+./scripts/setup-gcp-permissions.sh
+```
 
 ### Checklist de Segurança
 
