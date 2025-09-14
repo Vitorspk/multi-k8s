@@ -78,9 +78,13 @@ Este projeto demonstra uma aplicação completa em produção usando Docker, Kub
 git clone https://github.com/seu-usuario/multi-k8s.git
 cd multi-k8s
 
-# 2. Configure o projeto GCP
-export GCP_PROJECT_ID='seu-projeto-gcp'
-export GCP_REGION='southamerica-east1'
+# 2. Configure variáveis de ambiente
+cp .env.example .env.local
+
+# Edite .env.local com suas configurações:
+# GCP_PROJECT_ID=seu-projeto-gcp
+# GCP_REGION=southamerica-east1
+# POSTGRES_PASSWORD=sua-senha-segura
 
 # 3. Setup completo
 make setup
@@ -88,6 +92,22 @@ make setup
 # 4. Deploy
 make deploy-local
 ```
+
+### 📝 Configuração de Variáveis
+
+O projeto usa um arquivo `.env.local` para configurações locais:
+
+```bash
+# Copiar template
+cp .env.example .env.local
+
+# Principais variáveis a configurar:
+GCP_PROJECT_ID=seu-projeto-gcp          # ID do projeto GCP
+GCP_REGION=southamerica-east1           # Região preferida
+POSTGRES_PASSWORD=sua-senha-segura      # Senha do PostgreSQL
+```
+
+**Importante:** O arquivo `.env.local` é ignorado pelo git para segurança.
 
 ## 🔐 Secret Manager
 
@@ -365,7 +385,7 @@ kubectl logs -f deployment/server-deployment
 | `setup-gcp-permissions.sh` | Configurar IAM e service account | Setup inicial |
 | `manage-secrets.sh` | Gerenciar secrets no GCP | Gestão de secrets |
 | `sync-secrets.py` | Sincronizar secrets com K8s | Durante deploy |
-| `wait-for-dependencies.sh` | Verificar serviços prontos | Após deploy |
+| `cleanup-k8s-resources.sh` | Limpar recursos Kubernetes | Antes do destroy |
 
 ## 📁 Estrutura do Projeto
 
@@ -405,7 +425,7 @@ multi-k8s/
 │   ├── manage-secrets.sh # Gerenciar secrets
 │   ├── sync-secrets.py   # Sincronizar secrets
 │   ├── setup-gcp-permissions.sh  # Setup IAM
-│   ├── wait-for-dependencies.sh  # Verificar serviços
+│   ├── cleanup-k8s-resources.sh  # Limpar recursos K8s
 │   ├── validate.sh       # Validação
 │   └── lib/
 │       └── common.sh     # Funções compartilhadas

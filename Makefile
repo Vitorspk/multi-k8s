@@ -1,9 +1,9 @@
 # Multi-K8s Project Makefile
 
-# Variables
-PROJECT_ID ?= vschiavo-home
-CLUSTER_NAME ?= multi-k8s-cluster
-ZONE ?= southamerica-east1-a
+# Variables - Load from environment or use defaults
+PROJECT_ID ?= $(shell echo $${GCP_PROJECT_ID:-your-gcp-project-id})
+CLUSTER_NAME ?= $(shell echo $${GKE_CLUSTER_NAME:-multi-k8s-cluster})
+ZONE ?= $(shell echo $${GCP_ZONE:-southamerica-east1-a})
 
 .PHONY: help secrets-setup secrets-sync secrets-list secrets-validate deploy-local test clean
 
