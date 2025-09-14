@@ -58,11 +58,12 @@ variable "preemptible" {
   default     = true
 }
 
-variable "docker_username" {
-  description = "Docker Hub username"
-  type        = string
-  sensitive   = true
-}
+# Variable removed - now using GCP Container Registry instead of Docker Hub
+# variable "docker_username" {
+#   description = "Docker Hub username"
+#   type        = string
+#   sensitive   = true
+# }
 
 variable "postgres_password" {
   description = "PostgreSQL password"

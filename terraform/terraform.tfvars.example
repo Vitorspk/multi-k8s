@@ -12,5 +12,5 @@ max_node_count = 3
 machine_type = "e2-small"
 preemptible  = true
 
-docker_username   = "your-docker-username"
+# docker_username removed - now using GCP Container Registry
 postgres_password = "your-secure-password"
