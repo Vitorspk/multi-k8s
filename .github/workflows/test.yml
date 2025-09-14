@@ -11,7 +11,7 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -21,13 +21,15 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Build test image
+    - name: Install client dependencies and run tests
       run: |
-        docker build -t test-client -f ./client/Dockerfile.dev ./client
+        cd client
+        npm install
+        npm test -- --coverage --watchAll=false
 
-    - name: Run client tests
+    - name: Test client production build
       run: |
-        docker run -e CI=true test-client npm test -- --coverage
+        docker build -t test-client -f ./client/Dockerfile ./client
 
     - name: Test server build
       run: |
