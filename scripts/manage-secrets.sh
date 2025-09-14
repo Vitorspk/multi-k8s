@@ -28,9 +28,31 @@ check_prerequisites() {
 }
 
 enable_secret_manager_api() {
-    echo "🚀 Enabling Secret Manager API..."
-    gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID
-    echo "✅ Secret Manager API enabled"
+    echo "🚀 Checking Secret Manager API..."
+
+    # Check if API is already enabled
+    if gcloud services list --enabled --filter="config.name:secretmanager.googleapis.com" --format="value(config.name)" --project=$PROJECT_ID | grep -q secretmanager; then
+        echo "✅ Secret Manager API is already enabled"
+    else
+        echo "📋 Attempting to enable Secret Manager API..."
+        if gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID 2>/dev/null; then
+            echo "✅ Secret Manager API enabled successfully"
+        else
+            echo "⚠️  Failed to enable Secret Manager API automatically"
+            echo "   This may require additional permissions or manual enablement."
+            echo ""
+            echo "   To enable manually:"
+            echo "   1. Go to: https://console.cloud.google.com/apis/library/secretmanager.googleapis.com?project=$PROJECT_ID"
+            echo "   2. Click 'Enable'"
+            echo ""
+            echo "   Or grant the service account the necessary permission:"
+            echo "   gcloud projects add-iam-policy-binding $PROJECT_ID \\"
+            echo "     --member=\"serviceAccount:YOUR_SA_EMAIL\" \\"
+            echo "     --role=\"roles/serviceusage.serviceUsageAdmin\""
+            echo ""
+            echo "   Continuing with setup assuming API is or will be enabled..."
+        fi
+    fi
 }
 
 create_secret() {
@@ -40,16 +62,32 @@ create_secret() {
 
     echo "📝 Creating secret: $secret_name"
 
-    if gcloud secrets describe $secret_name --project=$PROJECT_ID &>/dev/null; then
-        echo "⚠️  Secret $secret_name already exists. Adding new version..."
-        echo -n "$secret_value" | gcloud secrets versions add $secret_name --data-file=- --project=$PROJECT_ID
-    else
-        echo "🆕 Creating new secret: $secret_name"
-        # Create secret without description (GCP Secret Manager doesn't support --set-description)
-        echo -n "$secret_value" | gcloud secrets create $secret_name --data-file=- --project=$PROJECT_ID
+    # Check if Secret Manager is accessible
+    if ! gcloud secrets list --project=$PROJECT_ID --limit=1 &>/dev/null 2>&1; then
+        echo "⚠️  Secret Manager API is not accessible yet"
+        echo "   Secret $secret_name will need to be created after API is enabled"
+        return 1
     fi
 
-    echo "✅ Secret $secret_name created/updated successfully"
+    if gcloud secrets describe $secret_name --project=$PROJECT_ID &>/dev/null 2>&1; then
+        echo "⚠️  Secret $secret_name already exists. Adding new version..."
+        if echo -n "$secret_value" | gcloud secrets versions add $secret_name --data-file=- --project=$PROJECT_ID 2>/dev/null; then
+            echo "✅ Secret $secret_name updated successfully"
+        else
+            echo "❌ Failed to update secret $secret_name"
+            return 1
+        fi
+    else
+        echo "🆕 Creating new secret: $secret_name"
+        if echo -n "$secret_value" | gcloud secrets create $secret_name --data-file=- --project=$PROJECT_ID 2>/dev/null; then
+            echo "✅ Secret $secret_name created successfully"
+        else
+            echo "❌ Failed to create secret $secret_name"
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 load_env_file() {
@@ -65,23 +103,36 @@ setup_secrets() {
 
     load_env_file
 
+    local failed_count=0
+
     # Database secrets (with environment variable fallbacks)
-    create_secret "postgres-password" "${POSTGRES_PASSWORD:-mypassword123}" "PostgreSQL database password"
-    create_secret "postgres-user" "${POSTGRES_USER:-postgres}" "PostgreSQL database username"
-    create_secret "postgres-host" "${POSTGRES_HOST:-postgres-cluster-ip-service}" "PostgreSQL database host"
-    create_secret "postgres-port" "${POSTGRES_PORT:-5432}" "PostgreSQL database port"
-    create_secret "postgres-database" "${POSTGRES_DATABASE:-postgres}" "PostgreSQL database name"
+    create_secret "postgres-password" "${POSTGRES_PASSWORD:-mypassword123}" "PostgreSQL database password" || ((failed_count++))
+    create_secret "postgres-user" "${POSTGRES_USER:-postgres}" "PostgreSQL database username" || ((failed_count++))
+    create_secret "postgres-host" "${POSTGRES_HOST:-postgres-cluster-ip-service}" "PostgreSQL database host" || ((failed_count++))
+    create_secret "postgres-port" "${POSTGRES_PORT:-5432}" "PostgreSQL database port" || ((failed_count++))
+    create_secret "postgres-database" "${POSTGRES_DATABASE:-postgres}" "PostgreSQL database name" || ((failed_count++))
 
     # Redis secrets (with environment variable fallbacks)
-    create_secret "redis-host" "${REDIS_HOST:-redis-cluster-ip-service}" "Redis host"
-    create_secret "redis-port" "${REDIS_PORT:-6379}" "Redis port"
+    create_secret "redis-host" "${REDIS_HOST:-redis-cluster-ip-service}" "Redis host" || ((failed_count++))
+    create_secret "redis-port" "${REDIS_PORT:-6379}" "Redis port" || ((failed_count++))
 
-    echo "✅ All secrets created successfully"
+    if [ $failed_count -eq 0 ]; then
+        echo "✅ All secrets created successfully"
+    else
+        echo "⚠️  $failed_count secrets failed to create"
+        echo "   Please enable the Secret Manager API and run this script again"
+        return 1
+    fi
 }
 
 list_secrets() {
     echo "📋 Listing all secrets:"
-    gcloud secrets list --project=$PROJECT_ID --format="table(name:label=SECRET_NAME,createTime:label=CREATED)"
+    if gcloud secrets list --project=$PROJECT_ID --format="table(name:label=SECRET_NAME,createTime:label=CREATED)" 2>/dev/null; then
+        return 0
+    else
+        echo "⚠️  Unable to list secrets (Secret Manager API may not be enabled)"
+        return 1
+    fi
 }
 
 grant_k8s_access() {
@@ -111,9 +162,27 @@ main() {
         "setup")
             check_prerequisites
             enable_secret_manager_api
-            setup_secrets
-            grant_k8s_access
-            list_secrets
+
+            # Try to setup secrets, but don't fail completely if API is not ready
+            if setup_secrets; then
+                grant_k8s_access
+                list_secrets
+            else
+                echo ""
+                echo "⚠️  Secret Manager setup incomplete"
+                echo ""
+                echo "Next steps:"
+                echo "1. Enable the Secret Manager API manually:"
+                echo "   https://console.cloud.google.com/apis/library/secretmanager.googleapis.com?project=$PROJECT_ID"
+                echo ""
+                echo "2. Re-run this script after API is enabled:"
+                echo "   ./scripts/manage-secrets.sh setup"
+                echo ""
+                echo "3. Or grant the service account permission to enable APIs:"
+                echo "   gcloud projects add-iam-policy-binding $PROJECT_ID \\"
+                echo "     --member=\"serviceAccount:multi-k8s-deployer@$PROJECT_ID.iam.gserviceaccount.com\" \\"
+                echo "     --role=\"roles/serviceusage.serviceUsageAdmin\""
+            fi
             ;;
         "list")
             list_secrets
