@@ -7,11 +7,6 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
-  backend "gcs" {
-    bucket = "vschiavo-home-terraform-state"
-    prefix = "multi-k8s/state"
-  }
 }
 
 provider "google" {
