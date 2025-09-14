@@ -6,12 +6,40 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
 }
 
 provider "google" {
   project = var.project_id
   region  = var.region
+}
+
+provider "kubernetes" {
+  host                   = "https://${google_container_cluster.primary.endpoint}"
+  cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
+  
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "gcloud"
+    args = [
+      "container",
+      "clusters",
+      "get-credentials",
+      google_container_cluster.primary.name,
+      "--zone",
+      google_container_cluster.primary.location,
+      "--project",
+      var.project_id,
+    ]
+  }
 }
 
 resource "google_container_cluster" "primary" {
@@ -83,7 +111,7 @@ resource "google_container_node_pool" "primary_nodes" {
     disk_size_gb = 30
     disk_type    = "pd-standard"
     
-    service_account = google_service_account.kubernetes.email
+    service_account = "default"
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
@@ -121,24 +149,8 @@ resource "google_compute_subnetwork" "subnet" {
   }
 }
 
-resource "google_service_account" "kubernetes" {
-  account_id   = "${var.cluster_name}-k8s-sa"
-  display_name = "Service Account for GKE cluster ${var.cluster_name}"
-}
-
-resource "google_project_iam_member" "kubernetes_roles" {
-  for_each = toset([
-    "roles/logging.logWriter",
-    "roles/monitoring.metricWriter",
-    "roles/monitoring.viewer",
-    "roles/stackdriver.resourceMetadata.writer",
-    "roles/storage.objectViewer"
-  ])
-  
-  project = var.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.kubernetes.email}"
-}
+# Using GKE default service account which has necessary permissions
+# No need to create custom service account for nodes
 
 resource "google_compute_global_address" "ingress_ip" {
   name = "${var.cluster_name}-ingress-ip"

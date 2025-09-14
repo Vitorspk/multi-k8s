@@ -21,8 +21,8 @@ output "ingress_ip" {
 }
 
 output "service_account_email" {
-  description = "Service account email for the cluster"
-  value       = google_service_account.kubernetes.email
+  description = "Service account email for the cluster (using default GKE service account)"
+  value       = "default"
 }
 
 output "kubectl_config_command" {
