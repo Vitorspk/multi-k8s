@@ -3,7 +3,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "your-gcp-project-id-terraform-state"
+    bucket = "vschiavo-home-terraform-state"
     prefix = "multi-k8s/state"
   }
 }
