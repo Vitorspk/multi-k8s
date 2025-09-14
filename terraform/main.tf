@@ -34,7 +34,7 @@ resource "google_container_cluster" "primary" {
   name     = "${var.cluster_name}-cluster"
   location = var.zone
 
-  initial_node_count       = 1
+  initial_node_count       = 2
   remove_default_node_pool = true
 
   deletion_protection = false
@@ -137,8 +137,6 @@ resource "google_compute_subnetwork" "subnet" {
   }
 }
 
-# Using GKE default service account which has necessary permissions
-# No need to create custom service account for nodes
 
 resource "google_compute_global_address" "ingress_ip" {
   name = "${var.cluster_name}-ingress-ip"
