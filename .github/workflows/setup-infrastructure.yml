@@ -130,14 +130,21 @@ jobs:
       run: |
         cd ..
         echo "🔐 Setting up Secret Manager with default values..."
-        ./scripts/manage-secrets.sh setup
+        ./scripts/manage-secrets.sh setup || {
+          echo ""
+          echo "⚠️  Secret Manager setup incomplete (this is expected if API is not enabled)"
+          echo "   You can enable it manually and re-run the script later"
+        }
 
         echo ""
         echo "Next steps:"
         echo "1. The GKE cluster is now ready"
-        echo "2. Update secrets in GCP Secret Manager if needed"
-        echo "3. Push to main/master branch to trigger deployment"
-        echo "4. Or run deployment workflow manually"
+        echo "2. If Secret Manager API is not enabled:"
+        echo "   - Enable it at: https://console.cloud.google.com/apis/library/secretmanager.googleapis.com"
+        echo "   - Or grant serviceusage.serviceUsageAdmin role to the service account"
+        echo "3. Update secrets in GCP Secret Manager if needed"
+        echo "4. Push to main/master branch to trigger deployment"
+        echo "5. Or run deployment workflow manually"
 
     - name: Terraform Destroy
       if: github.event.inputs.action == 'destroy'
