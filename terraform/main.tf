@@ -8,7 +8,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 2.33"
     }
     null = {
       source  = "hashicorp/null"
@@ -24,23 +24,11 @@ provider "google" {
 
 provider "kubernetes" {
   host                   = "https://${google_container_cluster.primary.endpoint}"
+  token                  = data.google_client_config.default.access_token
   cluster_ca_certificate = base64decode(google_container_cluster.primary.master_auth[0].cluster_ca_certificate)
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "gcloud"
-    args = [
-      "container",
-      "clusters",
-      "get-credentials",
-      google_container_cluster.primary.name,
-      "--zone",
-      google_container_cluster.primary.location,
-      "--project",
-      var.project_id,
-    ]
-  }
 }
+
+data "google_client_config" "default" {}
 
 resource "google_container_cluster" "primary" {
   name     = "${var.cluster_name}-cluster"
