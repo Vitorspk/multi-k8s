@@ -1,4 +1,4 @@
-project_id = "vschiavo-home"
+project_id = "your-gcp-project-id"
 region     = "southamerica-east1"
 zone       = "southamerica-east1-a"
 

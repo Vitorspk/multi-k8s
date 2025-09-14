@@ -6,8 +6,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-PROJECT_ID=${PROJECT_ID:-"vschiavo-home"}
-REGION=${REGION:-"southamerica-east1"}
+PROJECT_ID=${GCP_PROJECT_ID:-${PROJECT_ID:-"your-gcp-project-id"}}
+REGION=${GCP_REGION:-${REGION:-"southamerica-east1"}}
 
 print_info "🔐 Managing secrets for project: $PROJECT_ID"
 

@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
         - name: client
-          image: gcr.io/vschiavo-home/multi-client:latest
+          # Note: Image is automatically updated by GitHub Actions with correct PROJECT_ID
+          image: gcr.io/your-gcp-project-id/multi-client:latest
           ports:
             - containerPort: 3000
           resources:

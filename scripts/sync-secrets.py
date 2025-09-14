@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import base64
+import os
 from typing import Dict, Any
 import argparse
 import logging
@@ -190,7 +191,7 @@ class SecretSynchronizer:
 
 def main():
     parser = argparse.ArgumentParser(description='Synchronize secrets from GCP Secret Manager to Kubernetes')
-    parser.add_argument('--project-id', default='vschiavo-home', help='GCP Project ID')
+    parser.add_argument('--project-id', default=os.getenv('GCP_PROJECT_ID', 'your-gcp-project-id'), help='GCP Project ID')
     parser.add_argument('--validate-only', action='store_true', help='Only validate secrets exist')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
 

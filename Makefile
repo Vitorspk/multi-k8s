@@ -1,9 +1,9 @@
 # Multi-K8s Project Makefile
 
-# Variables
-PROJECT_ID ?= vschiavo-home
-CLUSTER_NAME ?= multi-k8s-cluster
-ZONE ?= southamerica-east1-a
+# Variables - Load from environment or use defaults
+PROJECT_ID ?= $(shell echo $${GCP_PROJECT_ID:-your-gcp-project-id})
+CLUSTER_NAME ?= $(shell echo $${GKE_CLUSTER_NAME:-multi-k8s-cluster})
+ZONE ?= $(shell echo $${GCP_ZONE:-southamerica-east1-a})
 
 .PHONY: help secrets-setup secrets-sync secrets-list secrets-validate deploy-local test clean
 
@@ -83,7 +83,15 @@ monitor-secrets: ## Monitor secret access logs
 monitor-pods: ## Monitor pod status
 	@watch kubectl get pods
 
+# Cleanup
+clean-k8s: ## Clean up Kubernetes resources (useful before destroying infrastructure)
+	@echo "🧹 Cleaning up Kubernetes resources..."
+	@./scripts/cleanup-k8s-resources.sh
+
+clean: clean-k8s ## Clean up all resources
+	@echo "✅ Cleanup completed!"
+
 # Documentation
 docs: ## Open documentation
-	@echo "📚 Secret Manager Documentation:"
-	@cat docs/SECRET_MANAGER.md
+	@echo "📚 Documentation available in README.md"
+	@echo "📖 View online at: https://github.com/Vitorspk/multi-k8s"
