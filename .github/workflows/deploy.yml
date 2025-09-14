@@ -32,6 +32,10 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Install GKE auth plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin --quiet
+
     - name: Configure Docker to use gcloud as credential helper
       run: |
         gcloud auth configure-docker

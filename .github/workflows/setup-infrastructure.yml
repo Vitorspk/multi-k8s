@@ -47,6 +47,10 @@ jobs:
       with:
         version: 'latest'
 
+    - name: Install GKE auth plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin --quiet
+
     - name: Create Terraform Backend Bucket
       run: |
         BUCKET_NAME="${{ env.PROJECT_ID }}-terraform-state"
