@@ -17,6 +17,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
   TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+  USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
 
 jobs:
   terraform:

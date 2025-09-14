@@ -11,6 +11,7 @@ env:
   GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'multi-k8s-cluster' }}
   GKE_ZONE: ${{ secrets.GKE_ZONE || 'southamerica-east1-a' }}
   DEPLOYMENT_NAME: ${{ secrets.DEPLOYMENT_NAME || 'multi-k8s' }}
+  USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
 
 jobs:
   setup-build-publish-deploy:
