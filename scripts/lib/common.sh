@@ -31,90 +31,10 @@ print_info() {
     echo -e "ℹ️  $1"
 }
 
-# Function to check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
 
-# Function to validate environment variables
-validate_env_var() {
-    local var_name=$1
-    local var_value=${!var_name}
-    local required=${2:-false}
-    
-    if [[ -z "$var_value" ]]; then
-        if [[ "$required" == "true" ]]; then
-            print_error "$var_name is not set (required)"
-            return 1
-        else
-            print_warning "$var_name is not set (optional)"
-            return 0
-        fi
-    else
-        print_success "$var_name is set"
-        return 0
-    fi
-}
 
-# Function to check GKE cluster exists
-check_cluster_exists() {
-    local cluster_name=${1:-$DEFAULT_CLUSTER_NAME}
-    local zone=${2:-$DEFAULT_GCP_ZONE}
-    local project_id=${3:-$GCP_PROJECT_ID}
-    
-    if gcloud container clusters describe "$cluster_name" \
-        --zone="$zone" \
-        --project="$project_id" &>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
 
-# Function to get cluster credentials
-get_cluster_credentials() {
-    local cluster_name=${1:-$DEFAULT_CLUSTER_NAME}
-    local zone=${2:-$DEFAULT_GCP_ZONE}
-    local project_id=${3:-$GCP_PROJECT_ID}
-    
-    echo "Getting credentials for cluster $cluster_name..."
-    if gcloud container clusters get-credentials "$cluster_name" \
-        --zone="$zone" \
-        --project="$project_id"; then
-        print_success "Cluster credentials configured"
-        return 0
-    else
-        print_error "Failed to get cluster credentials"
-        return 1
-    fi
-}
 
-# Function to create PostgreSQL secret
-create_postgres_secret() {
-    local password=${1:-$POSTGRES_PASSWORD}
-    local namespace=${2:-default}
-    
-    if [[ -z "$password" ]]; then
-        print_error "PostgreSQL password not provided"
-        return 1
-    fi
-    
-    if kubectl get secret pgpassword -n "$namespace" &>/dev/null; then
-        print_info "PostgreSQL secret already exists"
-        return 0
-    else
-        echo "Creating PostgreSQL secret..."
-        if kubectl create secret generic pgpassword \
-            --from-literal=PGPASSWORD="$password" \
-            -n "$namespace"; then
-            print_success "PostgreSQL secret created"
-            return 0
-        else
-            print_error "Failed to create PostgreSQL secret"
-            return 1
-        fi
-    fi
-}
 
 # Function to check if bucket exists
 bucket_exists() {
@@ -123,6 +43,8 @@ bucket_exists() {
 }
 
 # Function to create GCS bucket with versioning
+# Note: Similar logic exists in .github/workflows/setup-infrastructure.yml
+# Kept here for local script usage in setup-gcp-permissions.sh
 create_gcs_bucket() {
     local bucket_name=$1
     local project_id=${2:-$GCP_PROJECT_ID}
@@ -184,29 +106,3 @@ wait_for_deployment() {
     fi
 }
 
-# Function to get external IP
-get_external_ip() {
-    local service_name=${1:-ingress-nginx-controller}
-    local namespace=${2:-ingress-nginx}
-    local max_attempts=${3:-60}
-    
-    echo -n "Waiting for external IP"
-    for i in $(seq 1 $max_attempts); do
-        EXTERNAL_IP=$(kubectl get service "$service_name" \
-            -n "$namespace" \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-        
-        if [[ -n "$EXTERNAL_IP" ]]; then
-            echo ""
-            print_success "External IP: $EXTERNAL_IP"
-            export EXTERNAL_IP
-            return 0
-        fi
-        echo -n "."
-        sleep 2
-    done
-    
-    echo ""
-    print_error "No external IP assigned"
-    return 1
-}

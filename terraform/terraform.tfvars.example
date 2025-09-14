@@ -13,4 +13,5 @@ machine_type = "e2-small"
 preemptible  = true
 
 # docker_username removed - now using GCP Container Registry
-postgres_password = "your-secure-password"
+# postgres_password removed - now using GCP Secret Manager
+# Run: ./scripts/manage-secrets.sh to setup secrets

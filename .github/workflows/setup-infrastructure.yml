@@ -16,7 +16,6 @@ on:
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-  TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
   USE_GKE_GCLOUD_AUTH_PLUGIN: 'True'
 
 jobs:
@@ -113,33 +112,39 @@ jobs:
       if: github.event.inputs.action == 'plan'
       run: |
         terraform plan \
-          -var="project_id=${{ env.TF_VAR_project_id }}" \
-          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+          -var="project_id=${{ env.TF_VAR_project_id }}"
 
     - name: Terraform Apply
       if: github.event.inputs.action == 'apply'
       run: |
         terraform apply -auto-approve \
-          -var="project_id=${{ env.TF_VAR_project_id }}" \
-          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+          -var="project_id=${{ env.TF_VAR_project_id }}"
         
         echo "✅ Infrastructure created successfully!"
         echo ""
         echo "📊 Resources created:"
         terraform output
+
+    - name: Setup Secret Manager
+      if: github.event.inputs.action == 'apply'
+      run: |
+        cd ..
+        echo "🔐 Setting up Secret Manager with default values..."
+        ./scripts/manage-secrets.sh setup
+
         echo ""
         echo "Next steps:"
         echo "1. The GKE cluster is now ready"
-        echo "2. Push to main/master branch to trigger deployment"
-        echo "3. Or run deployment workflow manually"
+        echo "2. Update secrets in GCP Secret Manager if needed"
+        echo "3. Push to main/master branch to trigger deployment"
+        echo "4. Or run deployment workflow manually"
 
     - name: Terraform Destroy
       if: github.event.inputs.action == 'destroy'
       run: |
         echo "⚠️ WARNING: This will destroy all infrastructure!"
         terraform destroy -auto-approve \
-          -var="project_id=${{ env.TF_VAR_project_id }}" \
-          -var="postgres_password=${{ env.TF_VAR_postgres_password }}"
+          -var="project_id=${{ env.TF_VAR_project_id }}"
         
         echo "🗑️ Infrastructure destroyed successfully!"
 

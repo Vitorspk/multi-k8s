@@ -79,12 +79,24 @@ jobs:
         docker push gcr.io/${{ env.PROJECT_ID }}/multi-worker:latest
         docker push gcr.io/${{ env.PROJECT_ID }}/multi-worker:${{ steps.sha.outputs.sha }}
 
-    - name: Create PostgreSQL Secret
+    - name: Enable Secret Manager API
       if: steps.check-cluster.outputs.cluster_exists == 'true'
       run: |
+        gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID
+
+    - name: Sync Secrets from Secret Manager
+      if: steps.check-cluster.outputs.cluster_exists == 'true'
+      run: |
+        # Install Python dependencies if needed
+        python3 -m pip install --upgrade pip
+
+        # Run secret synchronization
+        python3 scripts/sync-secrets.py --project-id=$PROJECT_ID
+
+        # Create legacy pgpassword secret for backward compatibility
         kubectl get secret pgpassword &>/dev/null || \
         kubectl create secret generic pgpassword \
-          --from-literal=PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          --from-literal=PGPASSWORD=$(gcloud secrets versions access latest --secret=postgres-password --project=$PROJECT_ID)
 
     - name: Deploy to GKE
       if: steps.check-cluster.outputs.cluster_exists == 'true'

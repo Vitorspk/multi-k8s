@@ -1,510 +1,487 @@
-# Multi-K8s - Aplicação Multi-Container no Google Kubernetes Engine
+# 🚀 Multi-K8s - Full-Stack Application with Kubernetes on GKE
 
-## 📋 Visão Geral
+Este projeto demonstra uma aplicação completa em produção usando Docker, Kubernetes, e Google Cloud Platform (GKE) com gerenciamento seguro de secrets via GCP Secret Manager.
 
-Aplicação multi-container completa implementando calculadora Fibonacci com arquitetura de microserviços:
+## 📋 Índice
 
-- **Client**: React App (Frontend)
-- **Server**: Node.js API (Backend)  
-- **Worker**: Background Worker (Processamento)
-- **PostgreSQL**: Database (Persistência)
-- **Redis**: Cache & Message Queue
-- **NGINX**: Ingress Controller
+- [Arquitetura](#-arquitetura)
+- [Pré-requisitos](#-pré-requisitos)
+- [Setup Rápido](#-setup-rápido)
+- [Secret Manager](#-secret-manager)
+- [Terraform Infrastructure](#-terraform-infrastructure)
+- [Deployment](#-deployment)
+- [Comandos Úteis](#-comandos-úteis)
+- [Troubleshooting](#-troubleshooting)
+- [Scripts Overview](#-scripts-overview)
+- [Estrutura do Projeto](#-estrutura-do-projeto)
 
-### Arquitetura
+## 🏗️ Arquitetura
 
+### Componentes da Aplicação
+
+- **Client**: React application (Nginx)
+- **Server**: Node.js Express API
+- **Worker**: Node.js background worker
+- **PostgreSQL**: Database persistence
+- **Redis**: In-memory caching
+
+### Tecnologias Utilizadas
+
+- **Container**: Docker
+- **Orchestration**: Kubernetes (GKE)
+- **Infrastructure**: Terraform
+- **CI/CD**: GitHub Actions
+- **Secret Management**: GCP Secret Manager
+- **Cloud Provider**: Google Cloud Platform
+
+## 📦 Pré-requisitos
+
+### Ferramentas Necessárias
+
+```bash
+# Verificar instalação
+./scripts/validate.sh
 ```
-Internet → Load Balancer → Ingress Controller
-                                ├── /* → Client (React)
-                                └── /api/* → Server (Node.js)
-                                              ├── PostgreSQL
-                                              └── Redis ← Worker
-```
+
+- **gcloud CLI** - [Install Guide](https://cloud.google.com/sdk/docs/install)
+- **kubectl** - [Install Guide](https://kubernetes.io/docs/tasks/tools/)
+- **Docker** - [Install Guide](https://docs.docker.com/get-docker/)
+- **Terraform** (opcional) - [Install Guide](https://www.terraform.io/downloads)
+- **Python 3** - Para scripts de sincronização
+
+### Conta GCP
+
+- Projeto GCP com billing habilitado
+- APIs necessárias serão habilitadas automaticamente
 
 ## 🚀 Setup Rápido
 
-### Pré-requisitos
+### Via GitHub Actions (Recomendado)
 
-- GCP Project configurado
-- `gcloud` CLI instalado e autenticado
-- `kubectl` CLI instalado
-- `terraform` CLI instalado (v1.0+)
-- `docker` instalado
-- Docker Hub account
-- GitHub repository (para CI/CD)
+1. **Fork este repositório**
 
-## 📋 Deployment Flow
+2. **Configure os Secrets no GitHub:**
+   - `GCP_PROJECT_ID`: Seu ID do projeto GCP
+   - `GCP_SA_KEY`: Service Account JSON (será criado no setup)
 
-### Initial Setup (Run Once)
+3. **Execute o Setup de Infraestrutura:**
+   - Actions → Setup GKE Infrastructure → Run workflow → Apply
 
-#### 1. Configure GCP Service Account
-```bash
-# Set environment variables
-export GCP_PROJECT_ID="your-project-id"
-export GCP_REGION="southamerica-east1"
+4. **Deploy da Aplicação:**
+   - Push para branch `master` ou `main` (deploy automático)
 
-# Run setup script (creates service account and optionally Terraform backend)
-./scripts/setup-gcp-permissions.sh
-
-# Copy the service account key to GitHub Secrets
-cat service-account.json | pbcopy
-# Add to GitHub: Settings > Secrets > Actions > GCP_SA_KEY
-```
-
-#### 2. Create Infrastructure
-
-**Option A: Via GitHub Actions (Recommended)**
-1. Configure GitHub Secrets (see section below)
-2. Go to **Actions** → **Setup GKE Infrastructure**
-3. Click **Run workflow** → Select **apply** → **Run**
-4. Wait for cluster creation (~10-15 minutes)
-
-**Option B: Via Terraform Local**
-```bash
-cd terraform
-terraform init
-terraform apply -auto-approve
-cd ..
-```
-
-### Manual Setup (Alternative)
-
-#### 1️⃣ Configure Environment Variables
+### Via CLI Local
 
 ```bash
-# Interactive setup (recommended)
-./scripts/setup-env-vars.sh
-source .env.local
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/multi-k8s.git
+cd multi-k8s
 
-# Or manually export
-export GCP_PROJECT_ID='your-gcp-project-id'
+# 2. Configure o projeto GCP
+export GCP_PROJECT_ID='seu-projeto-gcp'
 export GCP_REGION='southamerica-east1'
-export POSTGRES_PASSWORD='your-secure-password'
-export DOCKER_USERNAME='your-docker-username'
-export DOCKER_PASSWORD='your-docker-password'
+
+# 3. Setup completo
+make setup
+
+# 4. Deploy
+make deploy-local
 ```
 
-#### 2️⃣ Setup GCP Permissions
+## 🔐 Secret Manager
+
+### Visão Geral
+
+O sistema usa GCP Secret Manager para gerenciar todos os secrets de forma segura:
+
+- ✅ Secrets centralizados no GCP
+- ✅ Sincronização automática com Kubernetes
+- ✅ Versionamento e auditoria
+- ✅ Rotação facilitada
+- ✅ Zero valores hardcoded
+
+### Secrets Gerenciados
+
+#### Database Secrets (`database-secrets`)
+- `PGPASSWORD` - Senha do PostgreSQL
+- `PGUSER` - Usuário do PostgreSQL
+- `PGHOST` - Host do PostgreSQL
+- `PGPORT` - Porta do PostgreSQL
+- `PGDATABASE` - Nome do banco de dados
+
+#### Redis Secrets (`redis-secrets`)
+- `REDIS_HOST` - Host do Redis
+- `REDIS_PORT` - Porta do Redis
+
+### Gerenciamento de Secrets
 
 ```bash
-# Creates service account with proper permissions
-# Optionally creates Terraform backend bucket
-./scripts/setup-gcp-permissions.sh
+# Setup inicial dos secrets
+./scripts/manage-secrets.sh setup
+
+# Listar secrets
+./scripts/manage-secrets.sh list
+
+# Criar/atualizar um secret
+./scripts/manage-secrets.sh create SECRET_NAME "valor"
+
+# Sincronizar com Kubernetes
+python3 scripts/sync-secrets.py
+
+# Validar secrets
+python3 scripts/sync-secrets.py --validate-only
 ```
 
-#### 3️⃣ Create Infrastructure
+### Atualização de Secrets
+
+1. **Atualizar no Secret Manager:**
+```bash
+./scripts/manage-secrets.sh create postgres-password "nova-senha-segura"
+```
+
+2. **Sincronizar com Kubernetes:**
+```bash
+python3 scripts/sync-secrets.py
+```
+
+3. **Reiniciar pods se necessário:**
+```bash
+kubectl rollout restart deployment/server-deployment
+```
+
+## 🏗️ Terraform Infrastructure
+
+### Recursos Criados
+
+- **GKE Cluster** com Workload Identity
+- **VPC Network** e Subnet
+- **Node Pool** com autoscaling (1-3 nodes)
+- **Service Account** para GKE
+- **Global IP** para Ingress
+- **Cloud Storage Bucket** para Terraform state
+
+### Setup Manual do Terraform
 
 ```bash
 cd terraform
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your settings
 
+# Inicializar
 terraform init
+
+# Planejar mudanças
 terraform plan
+
+# Aplicar infraestrutura
 terraform apply
-cd ..
+
+# Destruir (quando necessário)
+terraform destroy
 ```
 
-#### 4️⃣ Deploy Application
+### Configuração via GitHub Actions
+
+1. Actions → Setup GKE Infrastructure
+2. Selecionar ação: `plan`, `apply`, ou `destroy`
+3. Executar workflow
+
+## 📦 Deployment
+
+### Ordem de Deploy
+
+1. **PostgreSQL** → Storage principal
+2. **Redis** → Cache layer
+3. **Server** → API backend
+4. **Worker** → Background jobs
+5. **Client** → Frontend
+6. **Ingress** → Load balancer
+
+### Deploy Automático (CI/CD)
+
+Push para `master` ou `main` dispara automaticamente:
+
+1. Build das imagens Docker
+2. Push para GCP Container Registry
+3. Sincronização de secrets
+4. Deploy no Kubernetes
+5. Verificação de saúde
+
+### Deploy Manual
 
 ```bash
-# Build and push Docker images (optional, CI/CD does this)
-./scripts/docker-build-push.sh
+# Deploy completo
+make deploy-local
 
-# Deploy to GKE
-./scripts/deploy-to-gke.sh
+# Verificar status
+kubectl get pods
+kubectl get services
 
-# Verify deployment
-./scripts/wait-for-dependencies.sh
+# Verificar logs
+kubectl logs deployment/server-deployment
+kubectl logs deployment/worker-deployment
 ```
 
-## 🔄 Ordem de Deploy (Importante!)
+## 🛠️ Comandos Úteis
 
-A ordem correta de deployment garante que todas as dependências sejam satisfeitas:
+### Makefile Commands
 
-### Fase 1: Infraestrutura (Terraform)
-```
-VPC Network → Subnet → GKE Cluster → Node Pool → Service Account
-```
-
-### Fase 2: Prerequisites Kubernetes
 ```bash
-# Namespace e NGINX Ingress
-kubectl apply -f k8s/00-prerequisites.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
-
-# Secret do PostgreSQL
-kubectl create secret generic pgpassword \
-  --from-literal=PGPASSWORD=$POSTGRES_PASSWORD \
-  -n multi-k8s
+make help              # Mostrar todos os comandos
+make setup             # Setup completo
+make deploy-local      # Deploy local
+make secrets-setup     # Configurar secrets
+make secrets-sync      # Sincronizar secrets
+make secrets-validate  # Validar secrets
+make monitor-pods      # Monitorar pods
+make clean             # Limpar recursos
 ```
 
-### Fase 3: Storage Services (Paralelo)
+### Kubernetes Commands
+
 ```bash
-kubectl apply -f k8s/postgres-config.yaml -n multi-k8s
-kubectl apply -f k8s/redis-config.yaml -n multi-k8s
+# Pods
+kubectl get pods
+kubectl describe pod POD_NAME
+kubectl logs POD_NAME
+kubectl exec -it POD_NAME -- bash
+
+# Services
+kubectl get services
+kubectl get ingress
+
+# Secrets
+kubectl get secrets
+kubectl describe secret database-secrets
+
+# Debugging
+kubectl get events
+kubectl top nodes
+kubectl top pods
 ```
 
-### Fase 4: Application Services
+### GCloud Commands
+
 ```bash
-# Server depende de PostgreSQL + Redis
-kubectl apply -f k8s/server-config.yaml -n multi-k8s
+# Autenticação
+gcloud auth login
+gcloud config set project PROJECT_ID
 
-# Worker depende apenas de Redis
-kubectl apply -f k8s/worker-config.yaml -n multi-k8s
+# Cluster
+gcloud container clusters list
+gcloud container clusters get-credentials CLUSTER_NAME --zone ZONE
+
+# Secrets
+gcloud secrets list
+gcloud secrets versions list SECRET_NAME
 ```
 
-### Fase 5: Frontend e Routing
+## 🆘 Troubleshooting
+
+### Problemas Comuns
+
+#### Pods em Pending/CrashLoopBackOff
+
 ```bash
-kubectl apply -f k8s/client-config.yaml -n multi-k8s
-kubectl apply -f k8s/ingress-service.yaml -n multi-k8s
+# Verificar eventos
+kubectl describe pod POD_NAME
+
+# Verificar logs
+kubectl logs POD_NAME --previous
+
+# Verificar recursos
+kubectl top nodes
 ```
 
-### Verificação
+#### Erro de Autenticação com PostgreSQL
+
 ```bash
-./scripts/wait-for-dependencies.sh
+# Verificar secret
+kubectl describe secret database-secrets
+
+# Re-sincronizar secrets
+python3 scripts/sync-secrets.py
+
+# Reiniciar pods
+kubectl rollout restart deployment/server-deployment
 ```
 
-## 🔐 Configuração GitHub Actions CI/CD
+#### Secret não encontrado
 
-### Secrets Obrigatórios
+```bash
+# Listar secrets no GCP
+gcloud secrets list --project=PROJECT_ID
 
-Configure em: **Settings → Secrets and variables → Actions**
+# Criar secret se necessário
+./scripts/manage-secrets.sh create SECRET_NAME "valor"
+```
 
-| Secret | Descrição | Como Obter |
-|--------|-----------|------------|
-| `GCP_PROJECT_ID` | ID do projeto GCP | Console GCP |
-| `GCP_SA_KEY` | Service Account JSON | `cat service-account.json` |
-| `DOCKER_USERNAME` | Usuário Docker Hub | Docker Hub account |
-| `DOCKER_PASSWORD` | Token Docker Hub | Docker Hub → Settings → Security → Access Tokens |
-| `POSTGRES_PASSWORD` | Senha PostgreSQL | `openssl rand -base64 32` |
+#### Permissão negada
 
-### Secrets Opcionais (com defaults)
+```bash
+# Verificar IAM
+gcloud projects get-iam-policy PROJECT_ID
 
-- `GKE_CLUSTER_NAME`: Default `multi-k8s-cluster`
-- `GKE_ZONE`: Default `southamerica-east1-a`
-- `DEPLOYMENT_NAME`: Default `multi-k8s`
+# Adicionar permissão
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:SA_EMAIL" \
+    --role="roles/secretmanager.secretAccessor"
+```
 
-### Pipeline
+### Logs e Monitoramento
 
-- **Push para master/main**: Deploy automático
-- **Pull Request**: Executa testes
+```bash
+# Logs do Secret Manager
+gcloud logging read "resource.type=secret_manager" --project=PROJECT_ID
+
+# Logs dos pods
+kubectl logs -l component=server --tail=100
+kubectl logs -l component=worker --tail=100
+
+# Monitorar em tempo real
+kubectl logs -f deployment/server-deployment
+```
+
+## 📚 Scripts Overview
+
+| Script | Propósito | Quando Usar |
+|--------|-----------|-------------|
+| `validate.sh` | Validação de pré-requisitos | Antes do setup inicial |
+| `setup-gcp-permissions.sh` | Configurar IAM e service account | Setup inicial |
+| `manage-secrets.sh` | Gerenciar secrets no GCP | Gestão de secrets |
+| `sync-secrets.py` | Sincronizar secrets com K8s | Durante deploy |
+| `wait-for-dependencies.sh` | Verificar serviços prontos | Após deploy |
 
 ## 📁 Estrutura do Projeto
 
 ```
 multi-k8s/
-├── .github/workflows/        # CI/CD
-│   ├── deploy.yml           # Deploy automático
-│   └── test.yml            # Testes em PR
-├── client/                  # React Frontend
-│   ├── src/                # Código fonte
-│   ├── nginx/              # Configuração NGINX
-│   ├── Dockerfile          # Produção
-│   └── Dockerfile.dev      # Desenvolvimento
-├── server/                  # Node.js API
-│   ├── index.js           # API endpoints
-│   ├── keys.js            # Configurações
-│   └── Dockerfile
-├── worker/                  # Background Worker
-│   ├── index.js           # Fibonacci otimizado
-│   └── Dockerfile
-├── k8s/                    # Kubernetes Manifests
-│   ├── 00-prerequisites.yaml    # Namespace & NetworkPolicy
-│   ├── client-config.yaml      # Frontend deployment
-│   ├── server-config.yaml      # API deployment
-│   ├── worker-config.yaml      # Worker deployment
-│   ├── postgres-config.yaml    # Database + PVC
-│   ├── redis-config.yaml       # Cache deployment
-│   └── ingress-service.yaml    # Routing rules
-├── terraform/              # Infrastructure as Code
-│   ├── main.tf            # GCP/GKE resources
-│   ├── kubernetes.tf      # K8s resources
+├── .github/
+│   └── workflows/         # GitHub Actions CI/CD
+│       ├── deploy.yml     # Deploy automático
+│       ├── setup-infrastructure.yml  # Setup Terraform
+│       └── test.yml       # Testes
+├── client/                # React Frontend
+│   ├── src/
+│   ├── public/
+│   ├── Dockerfile         # Produção
+│   └── Dockerfile.dev     # Desenvolvimento
+├── server/                # Node.js API
+│   ├── index.js
+│   ├── Dockerfile
+│   └── Dockerfile.dev
+├── worker/                # Background Worker
+│   ├── index.js
+│   ├── Dockerfile
+│   └── Dockerfile.dev
+├── k8s/                   # Kubernetes Configs
+│   ├── client-config.yaml
+│   ├── server-config.yaml
+│   ├── worker-config.yaml
+│   ├── postgres-config.yaml
+│   ├── redis-config.yaml
+│   └── ingress-service.yaml
+├── terraform/             # Infrastructure as Code
+│   ├── main.tf           # GCP/GKE resources
+│   ├── kubernetes.tf     # K8s resources
 │   ├── variables.tf      # Input variables
 │   └── outputs.tf        # Output values
-└── scripts/               # Automation Scripts
-    ├── setup-env-vars.sh          # Configure environment variables
-    ├── setup-gcp-permissions.sh   # Setup GCP service account & bucket
-    ├── docker-build-push.sh       # Build and push Docker images
-    ├── deploy-to-gke.sh           # Deploy to Kubernetes
-    ├── wait-for-dependencies.sh   # Verify services are ready
-    └── validate-k8s-configs.sh    # Validate K8s configurations
+├── scripts/               # Automation Scripts
+│   ├── manage-secrets.sh # Gerenciar secrets
+│   ├── sync-secrets.py   # Sincronizar secrets
+│   ├── setup-gcp-permissions.sh  # Setup IAM
+│   ├── wait-for-dependencies.sh  # Verificar serviços
+│   ├── validate.sh       # Validação
+│   └── lib/
+│       └── common.sh     # Funções compartilhadas
+└── Makefile              # Comandos facilitadores
 ```
 
-## 🛠️ Comandos Úteis
+## 🔒 Segurança
 
-### Kubernetes
+### Boas Práticas Implementadas
+
+- ✅ **Secrets centralizados** no GCP Secret Manager
+- ✅ **Service Accounts** com permissões mínimas
+- ✅ **Workload Identity** para pods
+- ✅ **Network Policies** para isolamento
+- ✅ **HTTPS** via Ingress
+- ✅ **Versionamento** de secrets
+- ✅ **Auditoria** completa via GCP
+
+### Checklist de Segurança
+
+- [ ] Nunca commitar secrets no código
+- [ ] Usar secrets do Secret Manager
+- [ ] Rotacionar credenciais regularmente
+- [ ] Revisar permissões IAM periodicamente
+- [ ] Monitorar logs de acesso
+- [ ] Manter imagens Docker atualizadas
+
+## 📊 Monitoramento e Observabilidade
+
+### Métricas Disponíveis
 
 ```bash
-# Status dos recursos
-kubectl get all -n multi-k8s
-
-# Logs
-kubectl logs deployment/server-deployment -n multi-k8s
-kubectl logs deployment/worker-deployment -n multi-k8s
-
-# Escalar
-kubectl scale deployment/client-deployment --replicas=5 -n multi-k8s
-
-# Acessar pod
-kubectl exec -it deployment/postgres-deployment -n multi-k8s -- psql -U postgres
-
-# IP externo
-kubectl get ingress -n multi-k8s
-
-# Métricas
+# Resource usage
 kubectl top nodes
-kubectl top pods -n multi-k8s
+kubectl top pods
+
+# Application health
+kubectl get pods --watch
+kubectl get events --watch
+
+# GCP Monitoring
+gcloud monitoring dashboards list
 ```
 
-### Terraform
+### Health Checks Configurados
 
-```bash
-# Ver recursos
-terraform state list
+- **Liveness Probes**: Verifica se o container está vivo
+- **Readiness Probes**: Verifica se está pronto para receber tráfego
+- **Startup Probes**: Tempo extra para inicialização
 
-# Outputs
-terraform output
+## 🔄 CI/CD Pipeline
 
-# Destruir tudo
-terraform destroy
-```
+### Fluxo do GitHub Actions
 
-### Docker
+1. **Test** (em PRs)
+   - Build das imagens
+   - Execução de testes
 
-```bash
-# Build local
-docker build -t multi-client ./client
-docker build -t multi-server ./server
-docker build -t multi-worker ./worker
+2. **Deploy** (em push para main/master)
+   - Build e push das imagens
+   - Sincronização de secrets
+   - Deploy no Kubernetes
+   - Verificação de saúde
 
-# Run local
-docker-compose up
-```
+3. **Infrastructure** (manual)
+   - Terraform plan/apply/destroy
+   - Gestão do cluster GKE
 
-## 💰 Otimização de Custos
-
-Configuração para mínimo custo:
-
-- **Cluster**: 1 nó e2-small preemptível
-- **Autoscaling**: 1-3 nós conforme demanda
-- **Região**: southamerica-east1 (São Paulo)
-- **Custo estimado**: ~$25-35/mês
-
-### Reduzir custos ainda mais:
-
-```bash
-# Usar apenas 1 réplica de cada serviço
-kubectl scale deployment/client-deployment --replicas=1 -n multi-k8s
-kubectl scale deployment/server-deployment --replicas=1 -n multi-k8s
-
-# Pausar cluster quando não usar
-gcloud container clusters resize multi-k8s-cluster --num-nodes=0 --zone=southamerica-east1-a
-```
-
-## 🔒 Segurança Implementada
-
-### ✅ Melhorias Aplicadas
-
-- **Sem hardcoding**: Todas as credenciais via environment variables
-- **Secrets K8s**: PostgreSQL password como secret
-- **Service Account**: Permissões mínimas necessárias
-- **Network Policy**: Isolamento de rede entre pods
-- **Resource Limits**: Limites de CPU/memória definidos
-- **Health Checks**: Liveness/Readiness probes configurados
-- **Versões específicas**: Imagens com tags específicas (não latest)
-- **Graceful Shutdown**: Handlers SIGTERM/SIGINT
-
-### Recomendações Adicionais
-
-1. Use Google Secret Manager para secrets
-2. Implemente RBAC detalhado
-3. Configure backup automático do PostgreSQL
-4. Use Workload Identity para pods
-5. Escaneie imagens com Trivy/Snyk
-6. Implemente Pod Security Policies
-
-## 📊 Monitoramento
-
-### Comandos de Monitoramento
-
-```bash
-# Status geral
-kubectl get deployments -n multi-k8s
-kubectl get pods -n multi-k8s
-kubectl get services -n multi-k8s
-
-# Verificar rollout
-kubectl rollout status deployment/client-deployment -n multi-k8s
-kubectl rollout status deployment/server-deployment -n multi-k8s
-
-# Histórico de rollout
-kubectl rollout history deployment/server-deployment -n multi-k8s
-
-# Logs em tempo real
-kubectl logs -f deployment/server-deployment -n multi-k8s
-```
-
-### Endpoints de Health Check
-
-- Client: `http://<EXTERNAL_IP>/`
-- API Server: `http://<EXTERNAL_IP>/api/`
-- API Values: `http://<EXTERNAL_IP>/api/values/current`
-
-## 📚 Scripts Overview
-
-| Script | Purpose | When to Use |
-|--------|---------|-------------|
-| `validate-project.sh` | **Complete project validation** - checks all dependencies and configs | Run first to verify setup |
-| `setup-gcp-permissions.sh` | Creates service account with proper permissions & optionally Terraform backend | Initial setup only |
-| `setup-env-vars.sh` | Interactive environment variable configuration | Local development setup |
-| `deploy-to-gke.sh` | Manual deployment to GKE cluster | Local testing/debugging |
-| `docker-build-push.sh` | Build and push Docker images | Local testing (CI/CD handles this automatically) |
-| `validate-k8s-configs.sh` | Validate Kubernetes configurations | Before deployment |
-| `wait-for-dependencies.sh` | Wait for all services to be ready | After deployment |
-
-## 🆘 Troubleshooting
-
-### Permission Denied Error (storage.buckets.create)
-
-```
-AccessDeniedException: 403 multi-k8s-deployer@***.iam.gserviceaccount.com does not have storage.buckets.create access
-```
-
-**Solution**:
-1. Run `./scripts/setup-gcp-permissions.sh` locally
-2. Update GitHub Secret with new service account key: `cat service-account.json | pbcopy`
-3. Re-run the workflow
-
-### Cluster Not Found (404 Not Found)
-
-```
-ERROR: (gcloud.container.clusters.get-credentials) ResponseError: code=404, message=Not found
-```
-
-**Solution**: The GKE cluster hasn't been created yet. Create it first:
-
-1. **Via GitHub Actions**: Actions → Setup GKE Infrastructure → Run workflow → apply
-2. **Via Terminal**: `cd terraform && terraform apply`
-
-### Pods não iniciam
-
-```bash
-kubectl describe pod <pod-name> -n multi-k8s
-kubectl logs <pod-name> -n multi-k8s --previous
-```
-
-### Ingress sem IP externo
-
-```bash
-kubectl get service -n ingress-nginx
-kubectl describe ingress ingress-service -n multi-k8s
-```
-
-### Erro de conexão PostgreSQL/Redis
-
-```bash
-# Verificar services
-kubectl get endpoints -n multi-k8s
-
-# Testar conexão
-kubectl run -it --rm debug --image=busybox --restart=Never -n multi-k8s -- sh
-> nslookup postgres-cluster-ip-service
-> nslookup redis-cluster-ip-service
-```
-
-### Erro de permissão GCP
-
-```bash
-gcloud auth application-default login
-gcloud config set project $GCP_PROJECT_ID
-```
-
-## 🔄 Updates e Rollbacks
-
-### Update de imagem
-
-```bash
-kubectl set image deployment/server-deployment \
-  server=$DOCKER_USERNAME/multi-server:v2 \
-  -n multi-k8s
-```
-
-### Rollback
-
-```bash
-kubectl rollout undo deployment/server-deployment -n multi-k8s
-```
-
-## 📝 API Endpoints
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/` | Health check |
-| GET | `/api/values/all` | Todos os valores (PostgreSQL) |
-| GET | `/api/values/current` | Valores em cache (Redis) |
-| POST | `/api/values` | Calcular novo Fibonacci |
-
-### Exemplo de uso:
-
-```bash
-# Submeter novo cálculo
-curl -X POST http://<EXTERNAL_IP>/api/values \
-  -H "Content-Type: application/json" \
-  -d '{"index": 10}'
-
-# Ver resultados
-curl http://<EXTERNAL_IP>/api/values/current
-```
-
-## 🚀 Desenvolvimento Local
-
-```bash
-# Criar arquivo docker-compose.yml para desenvolvimento local
-docker-compose -f docker-compose.dev.yml up
-
-# Acessar:
-# - Frontend: http://localhost:3000
-# - API: http://localhost:5000
-```
-
-## 📚 Tecnologias Utilizadas
-
-- **Frontend**: React 18, React Router, Axios
-- **Backend**: Node.js, Express, PostgreSQL client, Redis client
-- **Database**: PostgreSQL 15 Alpine
-- **Cache**: Redis 7 Alpine
-- **Container**: Docker, Multi-stage builds
-- **Orchestration**: Kubernetes 1.27+
-- **Infrastructure**: Terraform, Google Cloud Platform
-- **CI/CD**: GitHub Actions
-- **Routing**: NGINX Ingress Controller
-
-## 🔗 Links Úteis
-
-- [GKE Documentation](https://cloud.google.com/kubernetes-engine/docs)
-- [Kubernetes Docs](https://kubernetes.io/docs/)
-- [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [NGINX Ingress](https://kubernetes.github.io/ingress-nginx/)
-- [Docker Hub](https://hub.docker.com/)
-
-## 📄 Licença
-
-MIT License - Veja LICENSE para detalhes
-
-## 👥 Contribuindo
+## 🤝 Contribuindo
 
 1. Fork o projeto
-2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
+2. Crie uma feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## ✨ Autor
+## 📝 Licença
 
-**Vitor Schiavo**
-- GitHub: [@Vitorspk](https://github.com/Vitorspk)
+Este projeto é open source e está disponível sob a licença MIT.
+
+## 🙏 Agradecimentos
+
+- Google Cloud Platform pela infraestrutura
+- Kubernetes community
+- Docker community
+
+## 📞 Suporte
+
+Para problemas ou dúvidas:
+- Abra uma [Issue](https://github.com/seu-usuario/multi-k8s/issues)
+- Consulte a [documentação do GKE](https://cloud.google.com/kubernetes-engine/docs)
+- Verifique os [logs](#logs-e-monitoramento)
 
 ---
 
-**Última atualização:** Setembro 2024 | **Versão:** 2.0.0
+**Desenvolvido com ❤️ usando Kubernetes e Google Cloud Platform**
