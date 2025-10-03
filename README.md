@@ -535,7 +535,7 @@ This project is open source and available under the MIT License.
 For issues or questions:
 - Open an [Issue](https://github.com/your-username/multi-k8s/issues)
 - Check the [GKE documentation](https://cloud.google.com/kubernetes-engine/docs)
-- Verify the [logs](#logs-and-monitoring)
+- Check the [logs](#logs-and-monitoring)
 
 ---
 
