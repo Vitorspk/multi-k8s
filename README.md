@@ -348,7 +348,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
     --role="roles/secretmanager.secretAccessor"
 ```
 
-#### Terraform destroy hanging
+#### When Terraform destroy hangs
 
 If `terraform destroy` hangs on `ingress-nginx` namespace:
 
