@@ -1,23 +1,23 @@
 # 🚀 Multi-K8s - Full-Stack Application with Kubernetes on GKE
 
-Este projeto demonstra uma aplicação completa em produção usando Docker, Kubernetes, e Google Cloud Platform (GKE) com gerenciamento seguro de secrets via GCP Secret Manager.
+This project demonstrates a complete production application using Docker, Kubernetes, and Google Cloud Platform (GKE) with secure secret management via GCP Secret Manager.
 
-## 📋 Índice
+## 📋 Table of Contents
 
-- [Arquitetura](#-arquitetura)
-- [Pré-requisitos](#-pré-requisitos)
-- [Setup Rápido](#-setup-rápido)
+- [Architecture](#-architecture)
+- [Prerequisites](#-prerequisites)
+- [Quick Setup](#-quick-setup)
 - [Secret Manager](#-secret-manager)
 - [Terraform Infrastructure](#-terraform-infrastructure)
 - [Deployment](#-deployment)
-- [Comandos Úteis](#-comandos-úteis)
+- [Useful Commands](#-useful-commands)
 - [Troubleshooting](#-troubleshooting)
 - [Scripts Overview](#-scripts-overview)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Project Structure](#-project-structure)
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
-### Componentes da Aplicação
+### Application Components
 
 - **Client**: React application (Nginx)
 - **Server**: Node.js Express API
@@ -25,7 +25,7 @@ Este projeto demonstra uma aplicação completa em produção usando Docker, Kub
 - **PostgreSQL**: Database persistence
 - **Redis**: In-memory caching
 
-### Tecnologias Utilizadas
+### Technologies Used
 
 - **Container**: Docker
 - **Orchestration**: Kubernetes (GKE)
@@ -34,227 +34,227 @@ Este projeto demonstra uma aplicação completa em produção usando Docker, Kub
 - **Secret Management**: GCP Secret Manager
 - **Cloud Provider**: Google Cloud Platform
 
-## 📦 Pré-requisitos
+## 📦 Prerequisites
 
-### Ferramentas Necessárias
+### Required Tools
 
 ```bash
-# Verificar instalação
+# Check installation
 ./scripts/validate.sh
 ```
 
 - **gcloud CLI** - [Install Guide](https://cloud.google.com/sdk/docs/install)
 - **kubectl** - [Install Guide](https://kubernetes.io/docs/tasks/tools/)
 - **Docker** - [Install Guide](https://docs.docker.com/get-docker/)
-- **Terraform** (opcional) - [Install Guide](https://www.terraform.io/downloads)
-- **Python 3** - Para scripts de sincronização
+- **Terraform** (optional) - [Install Guide](https://www.terraform.io/downloads)
+- **Python 3** - For sync scripts
 
-### Conta GCP
+### GCP Account
 
-- Projeto GCP com billing habilitado
-- APIs necessárias serão habilitadas automaticamente
+- GCP project with billing enabled
+- Required APIs will be enabled automatically
 
-## 🚀 Setup Rápido
+## 🚀 Quick Setup
 
-### Via GitHub Actions (Recomendado)
+### Via GitHub Actions (Recommended)
 
-1. **Fork este repositório**
+1. **Fork this repository**
 
-2. **Configure os Secrets no GitHub:**
-   - `GCP_PROJECT_ID`: Seu ID do projeto GCP
-   - `GCP_SA_KEY`: Service Account JSON (será criado no setup)
-   - `POSTGRES_PASSWORD`: Senha para o PostgreSQL
+2. **Configure GitHub Secrets:**
+   - `GCP_PROJECT_ID`: Your GCP project ID
+   - `GCP_SA_KEY`: Service Account JSON (will be created in setup)
+   - `POSTGRES_PASSWORD`: PostgreSQL password
 
-3. **Execute o Setup de Infraestrutura:**
+3. **Run Infrastructure Setup:**
    - Actions → Setup GKE Infrastructure → Run workflow → Apply
 
-4. **Deploy da Aplicação:**
-   - Push para branch `master` ou `main` (deploy automático)
+4. **Deploy Application:**
+   - Push to `master` or `main` branch (automatic deploy)
 
-### Via CLI Local
+### Via Local CLI
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/multi-k8s.git
+# 1. Clone the repository
+git clone https://github.com/your-username/multi-k8s.git
 cd multi-k8s
 
-# 2. Configure variáveis de ambiente
+# 2. Configure environment variables
 cp .env.example .env.local
 
-# Edite .env.local com suas configurações:
-# GCP_PROJECT_ID=seu-projeto-gcp
+# Edit .env.local with your settings:
+# GCP_PROJECT_ID=your-gcp-project
 # GCP_REGION=southamerica-east1
-# POSTGRES_PASSWORD=sua-senha-segura
+# POSTGRES_PASSWORD=your-secure-password
 
-# 3. Setup completo
+# 3. Complete setup
 make setup
 
 # 4. Deploy
 make deploy-local
 ```
 
-### 📝 Configuração de Variáveis
+### 📝 Variable Configuration
 
-O projeto usa um arquivo `.env.local` para configurações locais:
+The project uses a `.env.local` file for local configurations:
 
 ```bash
-# Copiar template
+# Copy template
 cp .env.example .env.local
 
-# Principais variáveis a configurar:
-GCP_PROJECT_ID=seu-projeto-gcp          # ID do projeto GCP
-GCP_REGION=southamerica-east1           # Região preferida
-POSTGRES_PASSWORD=sua-senha-segura      # Senha do PostgreSQL
+# Main variables to configure:
+GCP_PROJECT_ID=your-gcp-project          # GCP project ID
+GCP_REGION=southamerica-east1           # Preferred region
+POSTGRES_PASSWORD=your-secure-password  # PostgreSQL password
 ```
 
-**Importante:** O arquivo `.env.local` é ignorado pelo git para segurança.
+**Important:** The `.env.local` file is ignored by git for security.
 
 ## 🔐 Secret Manager
 
-### Visão Geral
+### Overview
 
-O sistema usa GCP Secret Manager para gerenciar todos os secrets de forma segura:
+The system uses GCP Secret Manager to securely manage all secrets:
 
-- ✅ Secrets centralizados no GCP
-- ✅ Sincronização automática com Kubernetes
-- ✅ Versionamento e auditoria
-- ✅ Rotação facilitada
-- ✅ Zero valores hardcoded
+- ✅ Centralized secrets in GCP
+- ✅ Automatic synchronization with Kubernetes
+- ✅ Versioning and auditing
+- ✅ Easy rotation
+- ✅ Zero hardcoded values
 
-### Secrets Gerenciados
+### Managed Secrets
 
 #### Database Secrets (`database-secrets`)
-- `PGPASSWORD` - Senha do PostgreSQL
-- `PGUSER` - Usuário do PostgreSQL
-- `PGHOST` - Host do PostgreSQL
-- `PGPORT` - Porta do PostgreSQL
-- `PGDATABASE` - Nome do banco de dados
+- `PGPASSWORD` - PostgreSQL password
+- `PGUSER` - PostgreSQL user
+- `PGHOST` - PostgreSQL host
+- `PGPORT` - PostgreSQL port
+- `PGDATABASE` - Database name
 
 #### Redis Secrets (`redis-secrets`)
-- `REDIS_HOST` - Host do Redis
-- `REDIS_PORT` - Porta do Redis
+- `REDIS_HOST` - Redis host
+- `REDIS_PORT` - Redis port
 
-### Gerenciamento de Secrets
+### Secret Management
 
 ```bash
-# Setup inicial dos secrets
+# Initial secret setup
 ./scripts/manage-secrets.sh setup
 
-# Listar secrets
+# List secrets
 ./scripts/manage-secrets.sh list
 
-# Criar/atualizar um secret
-./scripts/manage-secrets.sh create SECRET_NAME "valor"
+# Create/update a secret
+./scripts/manage-secrets.sh create SECRET_NAME "value"
 
-# Sincronizar com Kubernetes
+# Synchronize with Kubernetes
 python3 scripts/sync-secrets.py
 
-# Validar secrets
+# Validate secrets
 python3 scripts/sync-secrets.py --validate-only
 ```
 
-### Atualização de Secrets
+### Secret Updates
 
-1. **Atualizar no Secret Manager:**
+1. **Update in Secret Manager:**
 ```bash
-./scripts/manage-secrets.sh create postgres-password "nova-senha-segura"
+./scripts/manage-secrets.sh create postgres-password "new-secure-password"
 ```
 
-2. **Sincronizar com Kubernetes:**
+2. **Synchronize with Kubernetes:**
 ```bash
 python3 scripts/sync-secrets.py
 ```
 
-3. **Reiniciar pods se necessário:**
+3. **Restart pods if necessary:**
 ```bash
 kubectl rollout restart deployment/server-deployment
 ```
 
 ## 🏗️ Terraform Infrastructure
 
-### Recursos Criados
+### Created Resources
 
-- **GKE Cluster** com Workload Identity
-- **VPC Network** e Subnet
-- **Node Pool** com autoscaling (1-3 nodes)
-- **Service Account** para GKE
-- **Global IP** para Ingress
-- **Cloud Storage Bucket** para Terraform state
+- **GKE Cluster** with Workload Identity
+- **VPC Network** and Subnet
+- **Node Pool** with autoscaling (1-3 nodes)
+- **Service Account** for GKE
+- **Global IP** for Ingress
+- **Cloud Storage Bucket** for Terraform state
 
-### Setup Manual do Terraform
+### Manual Terraform Setup
 
 ```bash
 cd terraform
 
-# Inicializar
+# Initialize
 terraform init
 
-# Planejar mudanças
+# Plan changes
 terraform plan
 
-# Aplicar infraestrutura
+# Apply infrastructure
 terraform apply
 
-# Destruir (quando necessário)
+# Destroy (when necessary)
 terraform destroy
 ```
 
-### Configuração via GitHub Actions
+### Configuration via GitHub Actions
 
 1. Actions → Setup GKE Infrastructure
-2. Selecionar ação: `plan`, `apply`, ou `destroy`
-3. Executar workflow
+2. Select action: `plan`, `apply`, or `destroy`
+3. Run workflow
 
 ## 📦 Deployment
 
-### Ordem de Deploy
+### Deployment Order
 
-1. **PostgreSQL** → Storage principal
+1. **PostgreSQL** → Primary storage
 2. **Redis** → Cache layer
 3. **Server** → API backend
 4. **Worker** → Background jobs
 5. **Client** → Frontend
 6. **Ingress** → Load balancer
 
-### Deploy Automático (CI/CD)
+### Automatic Deployment (CI/CD)
 
-Push para `master` ou `main` dispara automaticamente:
+Push to `master` or `main` automatically triggers:
 
-1. Build das imagens Docker
-2. Push para GCP Container Registry
-3. Sincronização de secrets
-4. Deploy no Kubernetes
-5. Verificação de saúde
+1. Docker image builds
+2. Push to GCP Container Registry
+3. Secret synchronization
+4. Kubernetes deployment
+5. Health verification
 
-### Deploy Manual
+### Manual Deployment
 
 ```bash
-# Deploy completo
+# Complete deployment
 make deploy-local
 
-# Verificar status
+# Check status
 kubectl get pods
 kubectl get services
 
-# Verificar logs
+# Check logs
 kubectl logs deployment/server-deployment
 kubectl logs deployment/worker-deployment
 ```
 
-## 🛠️ Comandos Úteis
+## 🛠️ Useful Commands
 
 ### Makefile Commands
 
 ```bash
-make help              # Mostrar todos os comandos
-make setup             # Setup completo
-make deploy-local      # Deploy local
-make secrets-setup     # Configurar secrets
-make secrets-sync      # Sincronizar secrets
-make secrets-validate  # Validar secrets
-make monitor-pods      # Monitorar pods
-make clean-k8s         # Limpar recursos do Kubernetes
-make clean             # Limpar todos os recursos
+make help              # Show all commands
+make setup             # Complete setup
+make deploy-local      # Local deployment
+make secrets-setup     # Setup secrets
+make secrets-sync      # Synchronize secrets
+make secrets-validate  # Validate secrets
+make monitor-pods      # Monitor pods
+make clean-k8s         # Clean Kubernetes resources
+make clean             # Clean all resources
 ```
 
 ### Kubernetes Commands
@@ -283,7 +283,7 @@ kubectl top pods
 ### GCloud Commands
 
 ```bash
-# Autenticação
+# Authentication
 gcloud auth login
 gcloud config set project PROJECT_ID
 
@@ -298,96 +298,96 @@ gcloud secrets versions list SECRET_NAME
 
 ## 🆘 Troubleshooting
 
-### Problemas Comuns
+### Common Issues
 
-#### Pods em Pending/CrashLoopBackOff
+#### Pods in Pending/CrashLoopBackOff
 
 ```bash
-# Verificar eventos
+# Check events
 kubectl describe pod POD_NAME
 
-# Verificar logs
+# Check logs
 kubectl logs POD_NAME --previous
 
-# Verificar recursos
+# Check resources
 kubectl top nodes
 ```
 
-#### Erro de Autenticação com PostgreSQL
+#### PostgreSQL Authentication Error
 
 ```bash
-# Verificar secret
+# Check secret
 kubectl describe secret database-secrets
 
-# Re-sincronizar secrets
+# Re-synchronize secrets
 python3 scripts/sync-secrets.py
 
-# Reiniciar pods
+# Restart pods
 kubectl rollout restart deployment/server-deployment
 ```
 
-#### Secret não encontrado
+#### Secret not found
 
 ```bash
-# Listar secrets no GCP
+# List secrets in GCP
 gcloud secrets list --project=PROJECT_ID
 
-# Criar secret se necessário
-./scripts/manage-secrets.sh create SECRET_NAME "valor"
+# Create secret if necessary
+./scripts/manage-secrets.sh create SECRET_NAME "value"
 ```
 
-#### Permissão negada
+#### Permission denied
 
 ```bash
-# Verificar IAM
+# Check IAM
 gcloud projects get-iam-policy PROJECT_ID
 
-# Adicionar permissão
+# Add permission
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:SA_EMAIL" \
     --role="roles/secretmanager.secretAccessor"
 ```
 
-#### Terraform destroy travando
+#### When Terraform destroy hangs
 
-Se o `terraform destroy` travar no namespace `ingress-nginx`:
+If `terraform destroy` hangs on `ingress-nginx` namespace:
 
 ```bash
-# Executar limpeza manual
+# Run manual cleanup
 make clean-k8s
 
-# Ou executar o script diretamente
+# Or run the script directly
 ./scripts/cleanup-k8s-resources.sh
 
-# Depois tentar destroy novamente
+# Then try destroy again
 cd terraform && terraform destroy -auto-approve
 ```
 
-### Logs e Monitoramento
+### Logs and Monitoring
 
 ```bash
-# Logs do Secret Manager
+# Secret Manager logs
 gcloud logging read "resource.type=secret_manager" --project=PROJECT_ID
 
-# Logs dos pods
+# Pod logs
 kubectl logs -l component=server --tail=100
 kubectl logs -l component=worker --tail=100
 
-# Monitorar em tempo real
+# Real-time monitoring
 kubectl logs -f deployment/server-deployment
 ```
 
 ## 📚 Scripts Overview
 
-| Script | Propósito | Quando Usar |
-|--------|-----------|-------------|
-| `validate.sh` | Validação de pré-requisitos | Antes do setup inicial |
-| `setup-gcp-permissions.sh` | Configurar IAM e service account | Setup inicial |
-| `manage-secrets.sh` | Gerenciar secrets no GCP | Gestão de secrets |
-| `sync-secrets.py` | Sincronizar secrets com K8s | Durante deploy |
-| `cleanup-k8s-resources.sh` | Limpar recursos Kubernetes | Antes do destroy |
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `validate.sh` | Prerequisites validation | Before initial setup |
+| `setup-gcp-permissions.sh` | Configure IAM and service account | Initial setup |
+| `manage-secrets.sh` | Manage secrets in GCP | Secret management |
+| `sync-secrets.py` | Synchronize secrets with K8s | During deployment |
+| `cleanup-k8s-resources.sh` | Clean Kubernetes resources | Before destroy |
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 multi-k8s/
@@ -432,48 +432,48 @@ multi-k8s/
 └── Makefile              # Comandos facilitadores
 ```
 
-## 🔒 Segurança
+## 🔒 Security
 
-### Boas Práticas Implementadas
+### Implemented Best Practices
 
-- ✅ **Secrets centralizados** no GCP Secret Manager
-- ✅ **Service Accounts** com permissões mínimas
-- ✅ **Workload Identity** para pods
-- ✅ **Network Policies** para isolamento
+- ✅ **Centralized secrets** in GCP Secret Manager
+- ✅ **Service Accounts** with minimal permissions
+- ✅ **Workload Identity** for pods
+- ✅ **Network Policies** for isolation
 - ✅ **HTTPS** via Ingress
-- ✅ **Versionamento** de secrets
-- ✅ **Auditoria** completa via GCP
+- ✅ **Secret versioning**
+- ✅ **Complete auditing** via GCP
 
-### Permissões IAM Necessárias
+### Required IAM Permissions
 
-O Service Account usado pelo GitHub Actions precisa das seguintes roles:
+The Service Account used by GitHub Actions needs the following roles:
 
-- `roles/storage.admin` - Gerenciar buckets e objetos no Cloud Storage
-- `roles/artifactregistry.writer` - Push de imagens Docker
-- `roles/container.admin` - Gerenciar clusters GKE
-- `roles/compute.admin` - Gerenciar recursos de computação
-- `roles/iam.serviceAccountUser` - Usar service accounts
-- `roles/resourcemanager.projectIamAdmin` - Gerenciar IAM do projeto
-- `roles/serviceusage.serviceUsageAdmin` - Habilitar APIs do GCP
-- `roles/secretmanager.admin` - Gerenciar secrets no Secret Manager
+- `roles/storage.admin` - Manage buckets and objects in Cloud Storage
+- `roles/artifactregistry.writer` - Push Docker images
+- `roles/container.admin` - Manage GKE clusters
+- `roles/compute.admin` - Manage compute resources
+- `roles/iam.serviceAccountUser` - Use service accounts
+- `roles/resourcemanager.projectIamAdmin` - Manage project IAM
+- `roles/serviceusage.serviceUsageAdmin` - Enable GCP APIs
+- `roles/secretmanager.admin` - Manage secrets in Secret Manager
 
-Para configurar essas permissões, execute:
+To configure these permissions, run:
 ```bash
 ./scripts/setup-gcp-permissions.sh
 ```
 
-### Checklist de Segurança
+### Security Checklist
 
-- [ ] Nunca commitar secrets no código
-- [ ] Usar secrets do Secret Manager
-- [ ] Rotacionar credenciais regularmente
-- [ ] Revisar permissões IAM periodicamente
-- [ ] Monitorar logs de acesso
-- [ ] Manter imagens Docker atualizadas
+- [ ] Never commit secrets in code
+- [ ] Use Secret Manager secrets
+- [ ] Rotate credentials regularly
+- [ ] Review IAM permissions periodically
+- [ ] Monitor access logs
+- [ ] Keep Docker images updated
 
-## 📊 Monitoramento e Observabilidade
+## 📊 Monitoring and Observability
 
-### Métricas Disponíveis
+### Available Metrics
 
 ```bash
 # Resource usage
@@ -488,55 +488,55 @@ kubectl get events --watch
 gcloud monitoring dashboards list
 ```
 
-### Health Checks Configurados
+### Configured Health Checks
 
-- **Liveness Probes**: Verifica se o container está vivo
-- **Readiness Probes**: Verifica se está pronto para receber tráfego
-- **Startup Probes**: Tempo extra para inicialização
+- **Liveness Probes**: Checks if the container is alive
+- **Readiness Probes**: Checks if it's ready to receive traffic
+- **Startup Probes**: Extra time for initialization
 
 ## 🔄 CI/CD Pipeline
 
-### Fluxo do GitHub Actions
+### GitHub Actions Flow
 
-1. **Test** (em PRs)
-   - Build das imagens
-   - Execução de testes
+1. **Test** (on PRs)
+   - Image builds
+   - Test execution
 
-2. **Deploy** (em push para main/master)
-   - Build e push das imagens
-   - Sincronização de secrets
-   - Deploy no Kubernetes
-   - Verificação de saúde
+2. **Deploy** (on push to main/master)
+   - Build and push images
+   - Secret synchronization
+   - Kubernetes deployment
+   - Health verification
 
 3. **Infrastructure** (manual)
    - Terraform plan/apply/destroy
-   - Gestão do cluster GKE
+   - GKE cluster management
 
-## 🤝 Contribuindo
+## 🤝 Contributing
 
-1. Fork o projeto
-2. Crie uma feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📝 Licença
+## 📝 License
 
-Este projeto é open source e está disponível sob a licença MIT.
+This project is open source and available under the MIT License.
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgments
 
-- Google Cloud Platform pela infraestrutura
+- Google Cloud Platform for infrastructure
 - Kubernetes community
 - Docker community
 
-## 📞 Suporte
+## 📞 Support
 
-Para problemas ou dúvidas:
-- Abra uma [Issue](https://github.com/seu-usuario/multi-k8s/issues)
-- Consulte a [documentação do GKE](https://cloud.google.com/kubernetes-engine/docs)
-- Verifique os [logs](#logs-e-monitoramento)
+For issues or questions:
+- Open an [Issue](https://github.com/your-username/multi-k8s/issues)
+- Check the [GKE documentation](https://cloud.google.com/kubernetes-engine/docs)
+- Check the [logs](#logs-and-monitoring)
 
 ---
 
-**Desenvolvido com ❤️ usando Kubernetes e Google Cloud Platform**
+**Developed with ❤️ using Kubernetes and Google Cloud Platform**
