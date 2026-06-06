@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/client"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 10
     groups:
       client-dependencies:
@@ -16,7 +16,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/server"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 10
     groups:
       server-dependencies:
@@ -29,7 +29,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/worker"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 10
     groups:
       worker-dependencies:
@@ -42,7 +42,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     groups:
       github-actions:
         patterns:
